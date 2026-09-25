@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tenet — Token Efficiency Layer</title>
+  <meta name="description" content="Dokploy-inspired developer analytics, interactive knowledge graph, and pipeline simulator for Tenet token efficiency layer." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-base: #09090b;
+      --bg-sidebar: #0e0e11;
+      --bg-card: #141417;
+      --bg-card-subtle: #19191d;
+      --bg-hover: #1f1f24;
+      --bg-active: #27272e;
+      --border-base: #27272a;
+      --border-muted: #1f1f23;
+      --border-focus: #3f3f46;
+      
+      --text-main: #fafafa;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      
+      --brand-primary: #6366f1;
+      --brand-primary-hover: #4f46e5;
+      --brand-glow: rgba(99, 102, 241, 0.15);
+      
+      --accent-emerald: #10b981;
+      --accent-emerald-subtle: rgba(16, 185, 129, 0.1);
+      --accent-amber: #f59e0b;
+      --accent-amber-subtle: rgba(245, 158, 11, 0.1);
+      --accent-sky: #0ea5e9;
+      --accent-sky-subtle: rgba(14, 165, 233, 0.1);
+      --accent-violet: #8b5cf6;
+      --accent-violet-subtle: rgba(139, 92, 246, 0.1);
+      --accent-rose: #f43f5e;
+      --accent-rose-subtle: rgba(244, 63, 94, 0.1);
+      
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Layout structure */
+    .layout-root {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-base);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      user-select: none;
+      z-index: 20;
+    }
+
+    .sidebar-header {
+      padding: 20px 18px;
+      border-bottom: 1px solid var(--border-base);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      padding: 10px 12px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover {
+      background-color: var(--bg-hover);
+      color: var(--text-main);
+    }
+
+    .nav-item.active {
+      background-color: var(--bg-active);
+      color: var(--text-main);
+      border-color: var(--border-base);
+    }
+
+    .nav-item svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.8;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border-base);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    /* Main Content Area */
+    .main-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background-color: var(--bg-base);
+    }
+
+    .top-nav {
+      height: 58px;
+      border-bottom: 1px solid var(--border-base);
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--bg-base);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .breadcrumb-active {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border-base);
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background-color: var(--bg-hover);
+      border-color: var(--border-focus);
+    }
+
+    .btn-primary {
+      background-color: var(--brand-primary);
+      border-color: var(--brand-primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--brand-primary-hover);
+      border-color: var(--brand-primary-hover);
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .content-container {
+      padding: 28px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tab-view {
+      display: none;
+    }
+
+    .tab-view.active {
+      display: block;
+    }
+
+    /* Dokploy Card Aesthetics */
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-base);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-base);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    /* Metric Grid */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-base);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .metric-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .metric-value {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+    }
+
+    .metric-foot {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-dim);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    .badge-emerald {
+      background-color: var(--accent-emerald-subtle);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .badge-amber {
+      background-color: var(--accent-amber-subtle);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .badge-sky {
+      background-color: var(--accent-sky-subtle);
+      color: var(--accent-sky);
+      border: 1px solid rgba(14, 165, 233, 0.2);
+    }
+
+    .badge-violet {
+      background-color: var(--accent-violet-subtle);
+      color: var(--accent-violet);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    /* Tables */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      background-color: var(--bg-card-subtle);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border-base);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-muted);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background-color: var(--bg-hover);
+    }
+
+    /* Visualizer & Canvas layout */
+    .graph-container {
+      position: relative;
+      height: 600px;
+      background-color: #0c0c0e;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-base);
+    }
+
+    #graphCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #graphCanvas:active {
+      cursor: grabbing;
+    }
+
+    .graph-controls {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: rgba(20, 20, 23, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-base);
+      z-index: 5;
+    }
+
+    .graph-search {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 12px;
+      outline: none;
+      width: 160px;
+      font-family: inherit;
+    }
+
+    .graph-legend {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background-color: rgba(20, 20, 23, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-base);
+      font-size: 11px;
+      color: var(--text-muted);
+      z-index: 5;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .graph-drawer {
+      position: absolute;
+      top: 0;
+      right: -380px;
+      width: 360px;
+      height: 100%;
+      background-color: var(--bg-sidebar);
+      border-left: 1px solid var(--border-base);
+      transition: right 0.25s ease;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .graph-drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-base);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drawer-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      font-size: 12px;
+    }
+
+    .code-block {
+      background-color: #08080a;
+      border: 1px solid var(--border-base);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: #e4e4e7;
+      overflow-x: auto;
+      max-height: 240px;
+      white-space: pre;
+    }
+
+    /* Simulation View */
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 960px) {
+      .sim-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      background-color: var(--bg-card-subtle);
+      border: 1px solid var(--border-base);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      border-color: var(--brand-primary);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .trace-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-muted);
+      background-color: var(--bg-card-subtle);
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .trace-step.active {
+      border-color: var(--brand-primary);
+      background-color: rgba(99, 102, 241, 0.05);
+    }
+
+    .trace-step-number {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background-color: var(--bg-active);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .trace-step.active .trace-step-number {
+      background-color: var(--brand-primary);
+      color: #fff;
+    }
+
+    .trace-step-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .trace-step-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .trace-step-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* Spend Bar Chart */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+
+    .bar-label {
+      width: 140px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 18px;
+      background-color: var(--bg-card-subtle);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      display: flex;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1 0%, #38bdf8 100%);
+      border-radius: var(--radius-sm);
+      transition: width 0.4s ease;
+    }
+
+    .bar-value {
+      width: 70px;
+      text-align: right;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="layout-root">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">T</div>
+        <div class="brand-text">
+          <span class="brand-name">Tenet</span>
+          <span class="brand-badge">v0.1.0 • local-first</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label">Management</div>
+        <a class="nav-item active" data-tab="overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          Overview
+        </a>
+        <a class="nav-item" data-tab="graph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+          Knowledge Graph
+        </a>
+        <a class="nav-item" data-tab="simulator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          Pipeline Simulator
+        </a>
+        <a class="nav-item" data-tab="multiagent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Multi-Agent Planner
+        </a>
+        <a class="nav-item" data-tab="ledger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>
+          Request Ledger
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <div class="status-dot"></div>
+          <span>Engine Active</span>
+        </div>
+        <span id="pollerBadge" style="font-family: var(--font-mono);">8420</span>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <main class="main-wrapper">
+      <!-- Top Nav -->
+      <header class="top-nav">
+        <div class="breadcrumb">
+          <span>Tenet</span>
+          <span>/</span>
+          <span class="breadcrumb-active" id="breadcrumbTitle">Overview</span>
+        </div>
+        <div class="top-actions">
+          <button class="btn btn-sm" id="btnRefresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="content-container">
+
+        <!-- TAB 1: OVERVIEW -->
+        <section class="tab-view active" id="tab-overview">
+          <div class="metric-grid">
+            <div class="metric-card">
+              <div class="metric-top">
+                <span>Total Savings</span>
+                <span class="badge badge-emerald">Efficiency</span>
+              </div>
+              <div class="metric-value" id="valSavedTokens">0</div>
+              <div class="metric-foot">
+                <span>Tokens saved via Cache & AST compression</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <span>Cache Hit Rate</span>
+                <span class="badge badge-sky">Stage 3</span>
+              </div>
+              <div class="metric-value" id="valCacheHitRate">0.0%</div>
+              <div class="metric-foot">
+                <span id="valCacheHits">0 hits</span>
+                <span>• 0 token cost</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <span>Total Invocations</span>
+                <span class="badge badge-violet">Ledger</span>
+              </div>
+              <div class="metric-value" id="valTotalRequests">0</div>
+              <div class="metric-foot">
+                <span id="valEscalations">0 escalated</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-top">
+                <span>Actual Spend</span>
+                <span class="badge badge-amber">Tokens</span>
+              </div>
+              <div class="metric-value" id="valActualTokens">0</div>
+              <div class="metric-foot">
+                <span>vs <span id="valNaiveTokens">0</span> naive</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spend by Module & Anomalies Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <!-- Module Spend -->
+            <div class="card" style="margin-bottom: 0;">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Token Spend by Module</h3>
+                  <p class="card-subtitle">Per-directory token attribution</p>
+                </div>
+              </div>
+              <div class="card-body" id="moduleSpendList">
+                <div style="color: var(--text-dim); text-align: center; padding: 20px;">No module data recorded yet.</div>
+              </div>
+            </div>
+
+            <!-- Anomalies -->
+            <div class="card" style="margin-bottom: 0;">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Detected Anomalies</h3>
+                  <p class="card-subtitle">Requests exceeding 3x module baseline</p>
+                </div>
+              </div>
+              <div class="card-body" style="padding: 0;">
+                <div class="table-responsive">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Module</th>
+                        <th>Tokens</th>
+                        <th>Stage</th>
+                        <th>Summary</th>
+                      </tr>
+                    </thead>
+                    <tbody id="anomaliesTableBody">
+                      <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 24px;">No token spikes detected. All operations normal.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Requests Table -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Recent Activity</h3>
+                <p class="card-subtitle">Chronological ledger of pipeline requests</p>
+              </div>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Stage Reached</th>
+                      <th>Module</th>
+                      <th>Scope Nodes</th>
+                      <th>Tokens (Actual / Naive)</th>
+                      <th>Prompt Summary</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentTableBody">
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading ledger activity...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: KNOWLEDGE GRAPH VISUALIZER -->
+        <section class="tab-view" id="tab-graph">
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Interactive Knowledge Graph</h3>
+                <p class="card-subtitle">AST nodes and call/import dependency graph. Click nodes to inspect source.</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-sm" id="btnResetGraph">Reset View</button>
+              </div>
+            </div>
+            <div class="graph-container">
+              <div class="graph-controls">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                <input type="text" id="graphSearchInput" class="graph-search" placeholder="Search node or file..." />
+              </div>
+
+              <div class="graph-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#6366f1;"></div> Function</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6;"></div> Method</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Class</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9;"></div> Module</div>
+              </div>
+
+              <canvas id="graphCanvas"></canvas>
+
+              <!-- Node Inspector Drawer -->
+              <div class="graph-drawer" id="nodeDrawer">
+                <div class="drawer-header">
+                  <div>
+                    <h4 style="font-size: 13px; font-weight:600;" id="drawerNodeName">Node Details</h4>
+                    <span id="drawerNodeType" class="badge badge-sky" style="margin-top: 4px;">function</span>
+                  </div>
+                  <button class="btn btn-sm" id="btnCloseDrawer">Close</button>
+                </div>
+                <div class="drawer-body">
+                  <div>
+                    <div style="color: var(--text-dim); margin-bottom: 2px;">File & Lines</div>
+                    <div style="font-family: var(--font-mono); color: var(--text-main);" id="drawerNodeFile">-</div>
+                  </div>
+
+                  <div>
+                    <div style="color: var(--text-dim); margin-bottom: 2px;">Dependencies</div>
+                    <div id="drawerNodeEdges" style="color: var(--text-muted); font-size: 11.5px;">-</div>
+                  </div>
+
+                  <div>
+                    <div style="color: var(--text-dim); margin-bottom: 6px;">Source Code</div>
+                    <div class="code-block" id="drawerNodeSnippet"># No source available</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: PIPELINE SIMULATOR -->
+        <section class="tab-view" id="tab-simulator">
+          <div class="sim-grid">
+            <!-- Form Input -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Simulate Pipeline Execution</h3>
+                  <p class="card-subtitle">Test how prompts flow through all 6 token reduction stages</p>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label class="form-label">Developer Prompt</label>
+                  <textarea id="simPrompt" class="form-textarea" placeholder="e.g. Add a function that divides two numbers and catches division by zero errors...">Add a divide function that handles division by zero</textarea>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Target / Touched File(s)</label>
+                  <input type="text" id="simFiles" class="form-input" value="tests/fixtures/sample_a.py" placeholder="comma-separated file paths" />
+                </div>
+
+                <button class="btn btn-primary" id="btnRunSim" style="width: 100%; justify-content: center; padding: 10px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Execute 6-Stage Pipeline
+                </button>
+              </div>
+            </div>
+
+            <!-- Execution Trace Output -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Live Execution Trace</h3>
+                  <p class="card-subtitle" id="simStatusSummary">Awaiting run...</p>
+                </div>
+              </div>
+              <div class="card-body" id="simTraceSteps">
+                <div class="trace-step" id="step-1">
+                  <div class="trace-step-number">1</div>
+                  <div class="trace-step-content">
+                    <div class="trace-step-title">Knowledge Graph Resolution</div>
+                    <div class="trace-step-desc">Extracting 2-hop caller/callee subgraph around target files</div>
+                  </div>
+                </div>
+
+                <div class="trace-step" id="step-2">
+                  <div class="trace-step-number">2</div>
+                  <div class="trace-step-content">
+                    <div class="trace-step-title">AST Context Compression</div>
+                    <div class="trace-step-desc">Generating structural diffs & trimming unchanged source bodies</div>
+                  </div>
+                </div>
+
+                <div class="trace-step" id="step-3">
+                  <div class="trace-step-number">3</div>
+                  <div class="trace-step-content">
+                    <div class="trace-step-title">Semantic Cache (Stage 3)</div>
+                    <div class="trace-step-desc">Evaluating sentence embeddings against cached responses (0 tokens)</div>
+                  </div>
+                </div>
+
+                <div class="trace-step" id="step-4">
+                  <div class="trace-step-number">4</div>
+                  <div class="trace-step-content">
+                    <div class="trace-step-title">Local Ollama Triage (Stage 4)</div>
+                    <div class="trace-step-desc">Attempting local zero-cost code generation & AST verification</div>
+                  </div>
+                </div>
+
+                <div class="trace-step" id="step-5">
+                  <div class="trace-step-number">5</div>
+                  <div class="trace-step-content">
+                    <div class="trace-step-title">Tier Routing & Safety Gate (Stage 5)</div>
+                    <div class="trace-step-desc">Classifying cheap / mid / full model tier and confirming token budget</div>
+                  </div>
+                </div>
+
+                <div class="trace-step" id="step-6">
+                  <div class="trace-step-number">6</div>
+                  <div class="trace-step-content">
+                    <div class="trace-step-title">Ledger Recording (Stage 6)</div>
+                    <div class="trace-step-desc">Logging attribution & calculating saved token metrics</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: MULTI-AGENT PLANNER -->
+        <section class="tab-view" id="tab-multiagent">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Multi-Agent Task Overlap Matrix</h3>
+                <p class="card-subtitle">Detects intersecting subgraphs between concurrent agent tasks to prevent redundant context & race conditions</p>
+              </div>
+              <button class="btn btn-sm" id="btnRefreshMatrix">Re-analyze Tasks</button>
+            </div>
+            <div class="card-body" id="multiAgentCards">
+              <div style="text-align:center; color: var(--text-dim); padding: 30px;">Analyzing subagent task scopes...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: REQUEST LEDGER -->
+        <section class="tab-view" id="tab-ledger">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Request Ledger Explorer</h3>
+                <p class="card-subtitle">All historical requests stored in SQLite WAL ledger</p>
+              </div>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Timestamp</th>
+                      <th>Stage</th>
+                      <th>Module</th>
+                      <th>Tokens Actual</th>
+                      <th>Tokens Naive</th>
+                      <th>Prompt</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fullLedgerBody">
+                    <tr>
+                      <td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading ledger...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------------------
+    // Navigation & Tabs
+    // -------------------------------------------------------------------------
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabViews = document.querySelectorAll('.tab-view');
+    const breadcrumbTitle = document.getElementById('breadcrumbTitle');
+
+    navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const targetTab = item.getAttribute('data-tab');
+        navItems.forEach(n => n.classList.remove('active'));
+        tabViews.forEach(t => t.classList.remove('active'));
+
+        item.classList.add('active');
+        const view = document.getElementById(`tab-${targetTab}`);
+        if (view) view.classList.add('active');
+
+        breadcrumbTitle.textContent = item.textContent.trim();
+
+        if (targetTab === 'graph') {
+          initOrResizeGraph();
+        } else if (targetTab === 'multiagent') {
+          loadMultiAgentMatrix();
+        } else if (targetTab === 'ledger') {
+          loadFullLedger();
+        }
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // API Data Fetchers
+    // -------------------------------------------------------------------------
+    async function fetchOverview() {
+      try {
+        const [totalsRes, spendRes, anomaliesRes, recentRes] = await Promise.all([
+          fetch('/api/totals'),
+          fetch('/api/spend-by-module'),
+          fetch('/api/anomalies'),
+          fetch('/api/recent?limit=15')
+        ]);
+
+        if (totalsRes.ok) {
+          const t = await totalsRes.json();
+          document.getElementById('valSavedTokens').textContent = (t.tokens_saved || 0).toLocaleString();
+          document.getElementById('valCacheHitRate').textContent = `${((t.cache_hit_rate || 0) * 100).toFixed(1)}%`;
+          document.getElementById('valCacheHits').textContent = `${t.cache_hits || 0} hits`;
+          document.getElementById('valTotalRequests').textContent = (t.total_requests || 0).toLocaleString();
+          document.getElementById('valEscalations').textContent = `${t.escalations || 0} escalated`;
+          document.getElementById('valActualTokens').textContent = (t.tokens_actual_total || 0).toLocaleString();
+          document.getElementById('valNaiveTokens').textContent = (t.tokens_naive_total || 0).toLocaleString();
+        }
+
+        if (spendRes.ok) {
+          const spend = await spendRes.json();
+          renderSpendList(spend);
+        }
+
+        if (anomaliesRes.ok) {
+          const anomalies = await anomaliesRes.json();
+          renderAnomalies(anomalies);
+        }
+
+        if (recentRes.ok) {
+          const recent = await recentRes.json();
+          renderRecentTable(recent);
+        }
+      } catch (err) {
+        console.error('Error fetching overview:', err);
+      }
+    }
+
+    function renderSpendList(spend) {
+      const container = document.getElementById('moduleSpendList');
+      const entries = Object.entries(spend);
+      if (!entries.length) {
+        container.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No module data recorded yet.</div>';
+        return;
+      }
+
+      const maxVal = Math.max(...entries.map(([, v]) => v), 1);
+      container.innerHTML = entries.map(([mod, tokens]) => {
+        const pct = Math.round((tokens / maxVal) * 100);
+        return `
+          <div class="bar-row">
+            <span class="bar-label" title="${mod}">${mod}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="width: ${pct}%"></div>
+            </div>
+            <span class="bar-value">${tokens.toLocaleString()}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAnomalies(anomalies) {
+      const tbody = document.getElementById('anomaliesTableBody');
+      if (!anomalies.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 24px;">No token spikes detected. All operations normal.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = anomalies.map(a => `
+        <tr>
+          <td style="font-family: var(--font-mono); font-weight: 500;">${a.module}</td>
+          <td style="font-family: var(--font-mono); color: var(--accent-amber); font-weight:600;">${a.tokens.toLocaleString()}</td>
+          <td><span class="badge badge-amber">${a.stage_reached}</span></td>
+          <td style="color: var(--text-muted);">${escapeHtml(a.prompt_summary || '')}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderRecentTable(recent) {
+      const tbody = document.getElementById('recentTableBody');
+      if (!recent.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">No requests recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = recent.map(r => {
+        const stageBadge = getStageBadge(r.stage_reached);
+        return `
+          <tr>
+            <td style="font-family: var(--font-mono); color: var(--text-dim);">#${r.id}</td>
+            <td>${stageBadge}</td>
+            <td style="font-family: var(--font-mono); font-size: 12px;">${r.module_attribution || 'root'}</td>
+            <td style="font-family: var(--font-mono);">${r.scope_node_count || 0}</td>
+            <td style="font-family: var(--font-mono);">${(r.estimated_tokens_actual || 0).toLocaleString()} <span style="color:var(--text-dim)">/ ${(r.estimated_tokens_naive || 0).toLocaleString()}</span></td>
+            <td style="color: var(--text-muted); max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.prompt_summary || '')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getStageBadge(stage) {
+      if (stage === 'cache_hit') return '<span class="badge badge-emerald">cache_hit</span>';
+      if (stage === 'local_success') return '<span class="badge badge-sky">local_success</span>';
+      if (stage === 'escalated') return '<span class="badge badge-violet">escalated</span>';
+      return `<span class="badge badge-amber">${stage}</span>`;
+    }
+
+    // -------------------------------------------------------------------------
+    // Knowledge Graph Visualizer (Canvas Force Simulation)
+    // -------------------------------------------------------------------------
+    let graphData = { nodes: [], edges: [] };
+    let graphInitialized = false;
+    let canvas, ctx;
+    let nodesState = [];
+    let edgesState = [];
+    let zoom = 1, panX = 0, panY = 0;
+    let isDragging = false, dragStart = { x: 0, y: 0 };
+    let selectedNode = null;
+    let hoveredNode = null;
+
+    async function initOrResizeGraph() {
+      canvas = document.getElementById('graphCanvas');
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx = canvas.getContext('2d');
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+      if (!graphInitialized) {
+        setupGraphEvents();
+        await loadGraphData();
+        graphInitialized = true;
+      }
+      renderGraph();
+    }
+
+    async function loadGraphData() {
+      try {
+        const res = await fetch('/api/graph');
+        if (!res.ok) return;
+        graphData = await res.json();
+
+        // Build physics simulation positions
+        const width = canvas.width / window.devicePixelRatio;
+        const height = canvas.height / window.devicePixelRatio;
+        panX = width / 2;
+        panY = height / 2;
+
+        const count = graphData.nodes.length || 1;
+        nodesState = graphData.nodes.map((n, i) => {
+          const angle = (i / count) * 2 * Math.PI;
+          const radius = Math.min(width, height) * 0.35 + (Math.random() * 40 - 20);
+          return {
+            ...n,
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+            vx: 0,
+            vy: 0,
+            radius: n.type === 'class' ? 14 : n.type === 'module' ? 16 : 11,
+            color: getNodeColor(n.type)
+          };
+        });
+
+        edgesState = graphData.edges.map(e => ({
+          ...e,
+          sourceNode: nodesState.find(n => n.id === e.source_id),
+          targetNode: nodesState.find(n => n.id === e.target_id)
+        })).filter(e => e.sourceNode && e.targetNode);
+
+        // Simple relaxation step
+        for (let step = 0; step < 80; step++) {
+          relaxGraphStep();
+        }
+        renderGraph();
+      } catch (err) {
+        console.error('Error loading graph:', err);
+      }
+    }
+
+    function getNodeColor(type) {
+      switch (type) {
+        case 'function': return '#6366f1';
+        case 'method': return '#8b5cf6';
+        case 'class': return '#f59e0b';
+        case 'module': return '#0ea5e9';
+        default: return '#71717a';
+      }
+    }
+
+    function relaxGraphStep() {
+      // Repulsion between nodes
+      for (let i = 0; i < nodesState.length; i++) {
+        for (let j = i + 1; j < nodesState.length; j++) {
+          const a = nodesState[i];
+          const b = nodesState[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          if (dist < 180) {
+            const force = (180 - dist) / 180 * 1.5;
+            a.x -= (dx / dist) * force;
+            a.y -= (dy / dist) * force;
+            b.x += (dx / dist) * force;
+            b.y += (dy / dist) * force;
+          }
+        }
+      }
+
+      // Spring force on edges
+      for (const edge of edgesState) {
+        const a = edge.sourceNode;
+        const b = edge.targetNode;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const targetDist = 90;
+        const force = (dist - targetDist) * 0.04;
+        a.x += (dx / dist) * force;
+        a.y += (dy / dist) * force;
+        b.x -= (dx / dist) * force;
+        b.y -= (dy / dist) * force;
+      }
+    }
+
+    function setupGraphEvents() {
+      canvas.addEventListener('mousedown', (e) => {
+        const mouse = getCanvasMouse(e);
+        const hit = findNodeAt(mouse.x, mouse.y);
+        if (hit) {
+          selectedNode = hit;
+          openNodeDrawer(hit.id);
+        } else {
+          isDragging = true;
+          dragStart = { x: e.clientX - panX, y: e.clientY - panY };
+        }
+        renderGraph();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          panX = e.clientX - dragStart.x;
+          panY = e.clientY - dragStart.y;
+          renderGraph();
+          return;
+        }
+
+        if (canvas) {
+          const mouse = getCanvasMouse(e);
+          hoveredNode = findNodeAt(mouse.x, mouse.y);
+          renderGraph();
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.9 : 1.1;
+        zoom = Math.max(0.3, Math.min(3.5, zoom * factor));
+        renderGraph();
+      });
+
+      document.getElementById('btnResetGraph').addEventListener('click', () => {
+        zoom = 1;
+        const width = canvas.width / window.devicePixelRatio;
+        const height = canvas.height / window.devicePixelRatio;
+        panX = width / 2;
+        panY = height / 2;
+        renderGraph();
+      });
+
+      document.getElementById('btnCloseDrawer').addEventListener('click', () => {
+        document.getElementById('nodeDrawer').classList.remove('open');
+        selectedNode = null;
+        renderGraph();
+      });
+
+      document.getElementById('graphSearchInput').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        if (!q) {
+          selectedNode = null;
+          renderGraph();
+          return;
+        }
+        const match = nodesState.find(n => n.name.toLowerCase().includes(q) || n.file_path.toLowerCase().includes(q));
+        if (match) {
+          selectedNode = match;
+          panX = (canvas.width / window.devicePixelRatio) / 2 - match.x * zoom;
+          panY = (canvas.height / window.devicePixelRatio) / 2 - match.y * zoom;
+          openNodeDrawer(match.id);
+        }
+        renderGraph();
+      });
+    }
+
+    function getCanvasMouse(e) {
+      const rect = canvas.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+      return {
+        x: (rawX - panX) / zoom,
+        y: (rawY - panY) / zoom
+      };
+    }
+
+    function findNodeAt(worldX, worldY) {
+      return nodesState.find(n => {
+        const dx = n.x - worldX;
+        const dy = n.y - worldY;
+        return (dx * dx + dy * dy) <= (n.radius + 6) * (n.radius + 6);
+      });
+    }
+
+    function renderGraph() {
+      if (!ctx || !canvas) return;
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(panX, panY);
+      ctx.scale(zoom, zoom);
+
+      // Render edges
+      for (const edge of edgesState) {
+        const isHighlight = selectedNode && (edge.source_id === selectedNode.id || edge.target_id === selectedNode.id);
+        ctx.beginPath();
+        ctx.moveTo(edge.sourceNode.x, edge.sourceNode.y);
+        ctx.lineTo(edge.targetNode.x, edge.targetNode.y);
+        ctx.strokeStyle = isHighlight ? '#818cf8' : '#27272a';
+        ctx.lineWidth = isHighlight ? 2 : 1;
+        ctx.stroke();
+
+        // Arrowhead
+        const angle = Math.atan2(edge.targetNode.y - edge.sourceNode.y, edge.targetNode.x - edge.sourceNode.x);
+        const arrowDist = edge.targetNode.radius + 4;
+        const ax = edge.targetNode.x - Math.cos(angle) * arrowDist;
+        const ay = edge.targetNode.y - Math.sin(angle) * arrowDist;
+        ctx.beginPath();
+        ctx.arc(ax, ay, 2.5, 0, 2 * Math.PI);
+        ctx.fillStyle = isHighlight ? '#818cf8' : '#3f3f46';
+        ctx.fill();
+      }
+
+      // Render nodes
+      for (const n of nodesState) {
+        const isSelected = selectedNode && selectedNode.id === n.id;
+        const isHovered = hoveredNode && hoveredNode.id === n.id;
+
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.radius + (isSelected ? 3 : 0), 0, 2 * Math.PI);
+        ctx.fillStyle = n.color;
+        ctx.fill();
+
+        if (isSelected || isHovered) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Label
+        ctx.fillStyle = isSelected ? '#ffffff' : '#d4d4d8';
+        ctx.font = `${isSelected ? '600 ' : ''}11px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(n.name, n.x, n.y + n.radius + 14);
+      }
+
+      ctx.restore();
+    }
+
+    async function openNodeDrawer(nodeId) {
+      try {
+        const res = await fetch(`/api/node/${nodeId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const drawer = document.getElementById('nodeDrawer');
+
+        document.getElementById('drawerNodeName').textContent = data.node.name;
+        document.getElementById('drawerNodeType').textContent = data.node.type;
+        document.getElementById('drawerNodeFile').textContent = `${data.node.file_path}:${data.node.line_start}-${data.node.line_end}`;
+        
+        const inCount = data.inbound_edges.length;
+        const outCount = data.outbound_edges.length;
+        document.getElementById('drawerNodeEdges').textContent = `${inCount} callers / inbound, ${outCount} callees / outbound`;
+
+        document.getElementById('drawerNodeSnippet').textContent = data.snippet || '# (No code body)';
+        drawer.classList.add('open');
+      } catch (err) {
+        console.error('Error loading node details:', err);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Pipeline Simulator
+    // -------------------------------------------------------------------------
+    document.getElementById('btnRunSim').addEventListener('click', async () => {
+      const prompt = document.getElementById('simPrompt').value.trim();
+      const filesRaw = document.getElementById('simFiles').value.trim();
+      const files = filesRaw ? filesRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      if (!prompt) return;
+
+      const summary = document.getElementById('simStatusSummary');
+      summary.textContent = 'Simulating 6-stage pipeline...';
+
+      // Reset step highlights
+      for (let i = 1; i <= 6; i++) {
+        document.getElementById(`step-${i}`).classList.remove('active');
+      }
+
+      // Animate progress steps
+      document.getElementById('step-1').classList.add('active');
+      await sleep(150);
+      document.getElementById('step-2').classList.add('active');
+      await sleep(150);
+      document.getElementById('step-3').classList.add('active');
+
+      try {
+        const res = await fetch('/api/pipeline/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, touched_files: files })
+        });
+
+        if (!res.ok) throw new Error('Simulation failed');
+        const result = await res.json();
+
+        document.getElementById('step-4').classList.add('active');
+        document.getElementById('step-5').classList.add('active');
+        document.getElementById('step-6').classList.add('active');
+
+        summary.innerHTML = `<span class="badge ${result.stage_reached === 'cache_hit' ? 'badge-emerald' : 'badge-violet'}">${result.stage_reached}</span> • Tokens: ${result.estimated_tokens} • Tier: ${result.tier || 'cache'} • Scope: ${result.scope_node_count} nodes`;
+
+        // Refresh overview metrics
+        fetchOverview();
+      } catch (err) {
+        summary.textContent = `Simulation error: ${err.message}`;
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // Multi-Agent Task Planner
+    // -------------------------------------------------------------------------
+    async function loadMultiAgentMatrix() {
+      const container = document.getElementById('multiAgentCards');
+      try {
+        const res = await fetch('/api/multi-agent/matrix');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (!data.overlap_groups.length) {
+          container.innerHTML = `
+            <div style="text-align: center; color: var(--text-dim); padding: 30px;">
+              <div>Analyzed ${data.tasks_analyzed} subagent task candidates.</div>
+              <div style="color: var(--accent-emerald); font-weight: 500; margin-top: 6px;">All candidate scopes are disjoint. Safe for 100% parallel execution with zero write conflicts.</div>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = data.overlap_groups.map((g, i) => `
+          <div style="background-color: var(--bg-card-subtle); border: 1px solid var(--border-base); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <span style="font-weight: 600; font-size: 13px;">Overlap Group #${i + 1}</span>
+              <span class="badge ${g.recommendation === 'merge' ? 'badge-amber' : 'badge-sky'}">Recommendation: ${g.recommendation.toUpperCase()}</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+              <div><strong style="color: var(--text-main);">Task 1:</strong> ${escapeHtml(g.task_a)}</div>
+              <div><strong style="color: var(--text-main);">Task 2:</strong> ${escapeHtml(g.task_b)}</div>
+            </div>
+            <div style="font-size: 11.5px; color: var(--text-dim); font-family: var(--font-mono);">
+              Jaccard Overlap: ${(g.overlap_ratio * 100).toFixed(0)}% • Shared Graph Nodes: ${g.shared_nodes_count}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Error loading multi-agent matrix:', err);
+      }
+    }
+
+    document.getElementById('btnRefreshMatrix').addEventListener('click', loadMultiAgentMatrix);
+
+    // -------------------------------------------------------------------------
+    // Full Request Ledger
+    // -------------------------------------------------------------------------
+    async function loadFullLedger() {
+      const tbody = document.getElementById('fullLedgerBody');
+      try {
+        const res = await fetch('/api/recent?limit=200');
+        if (!res.ok) return;
+        const list = await res.json();
+
+        if (!list.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">No ledger entries found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = list.map(r => `
+          <tr>
+            <td style="font-family: var(--font-mono); color: var(--text-dim);">#${r.id}</td>
+            <td style="font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted);">${r.timestamp || ''}</td>
+            <td>${getStageBadge(r.stage_reached)}</td>
+            <td style="font-family: var(--font-mono);">${r.module_attribution || 'root'}</td>
+            <td style="font-family: var(--font-mono);">${(r.estimated_tokens_actual || 0).toLocaleString()}</td>
+            <td style="font-family: var(--font-mono); color: var(--text-dim);">${(r.estimated_tokens_naive || 0).toLocaleString()}</td>
+            <td style="color: var(--text-muted); max-width: 380px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.prompt_summary || '')}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Error loading full ledger:', err);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Utilities
+    // -------------------------------------------------------------------------
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('btnRefresh').addEventListener('click', () => {
+      fetchOverview();
+      if (document.getElementById('tab-graph').classList.contains('active')) {
+        loadGraphData();
+      }
+    });
+
+    // Initial Load & Poller
+    fetchOverview();
+    setInterval(fetchOverview, 6000);
+  </script>
+</body>
+</html>

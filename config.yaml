@@ -1,0 +1,32 @@
+graph:
+  languages: [python, javascript, typescript]
+  max_hops: 2                    # default subgraph radius for context scoping
+  db_path: "data/graph.sqlite"
+
+cache:
+  embedding_model: "all-MiniLM-L6-v2"
+  similarity_threshold: 0.92     # cosine similarity to count as a cache hit
+  ttl_hours: 168
+  db_path: "data/cache.sqlite"
+
+triage:
+  ollama_model: "qwen2.5-coder:7b"
+  ollama_host: "http://localhost:11434"
+  max_local_hops: 2              # escalate if graph-scope exceeds this
+  validation_timeout_seconds: 10
+
+router:
+  tiers:
+    cheap: {max_hops: 2, max_nodes: 5}
+    mid: {max_hops: 5, max_nodes: 20}
+    full: {max_hops: null, max_nodes: null}   # anything above mid
+  cost_confirmation_threshold_tokens: 20000
+  tokens_per_node_estimate: 800   # starting heuristic, refine from ledger data
+
+ledger:
+  db_path: "data/ledger.sqlite"
+  anomaly_multiplier: 3.0         # flag actions >3x rolling average
+
+dashboard:
+  host: "127.0.0.1"
+  port: 8420
