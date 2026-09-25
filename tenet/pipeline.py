@@ -107,6 +107,14 @@ def process_request(
     if ledger is None:
         ledger = LedgerStore(config.ledger.db_path)
 
+    # ── Stage 0: Prompt Optimization ──────────────────────────────────────
+    from tenet.triage.prompt_optimizer import optimize_prompt
+    logger.info("pipeline: stage 0 — prompt optimization")
+    original_prompt = prompt
+    prompt = optimize_prompt(prompt, config)
+    if prompt != original_prompt:
+        logger.info("pipeline: prompt optimized from %d to %d chars", len(original_prompt), len(prompt))
+
     # ── Stage 1: Update graph for touched files ───────────────────────────
     logger.info("pipeline: stage 1 — graph update for %d files", len(touched_files))
     if touched_files:

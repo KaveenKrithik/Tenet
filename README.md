@@ -17,6 +17,7 @@ Tenet is a local-first token efficiency layer for AI coding assistants. It inter
 
 ## 6-Stage Reduction Pipeline
 
+0. **Prompt Optimizer**: Intercepts and rewrites vague prompts into clear, strict, and rule-based instructions using local LLMs before entering the pipeline.
 1. **AST Knowledge Graph Scope**: Multi-language Tree-sitter parsing (Python, JS, TS, TSX) resolves 2-hop caller/callee dependencies so only relevant symbols enter context.
 2. **Structural Diff Compression**: Replaces unchanged code with concise semantic diff summaries, cutting context by 60%–80%.
 3. **Local Semantic Cache**: Matches prompt vectors via local dense embeddings (`all-MiniLM-L6-v2`) for instant 0-token hits ($0.00 cost).
@@ -60,13 +61,16 @@ ollama pull qwen2.5-coder:7b
 # 1. Index codebase knowledge graph
 tenet init .
 
-# 2. Launch futuristic analytics dashboard
+# 2. Optimize a rough prompt via local models (copies to clipboard)
+tenet optimize "fix the thing that breaks on big files"
+
+# 3. Launch futuristic analytics dashboard
 tenet dashboard
 
-# 3. Query through the token reduction pipeline
+# 4. Query through the token reduction pipeline
 tenet query "Add error handling to calculate_total" --files src/calc.py
 
-# 4. Check cumulative token savings
+# 5. Check cumulative token savings
 tenet status
 ```
 

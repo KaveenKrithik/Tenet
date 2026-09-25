@@ -141,6 +141,37 @@ def cmd_query(
 
 
 # ---------------------------------------------------------------------------
+# tenet optimize
+# ---------------------------------------------------------------------------
+
+@app.command("optimize")
+def cmd_optimize(
+    prompt: str = typer.Argument(..., help='Rough coding prompt to optimize'),
+    copy: bool = typer.Option(True, "--copy/--no-copy", help="Copy the result to clipboard (Mac only)"),
+) -> None:
+    """Optimize a prompt and optionally copy it to your clipboard."""
+    import subprocess
+    from tenet.config import load_config
+    from tenet.triage.prompt_optimizer import optimize_prompt
+
+    cfg = load_config()
+
+    console.print("[bold]Optimizing prompt...[/]")
+    optimized = optimize_prompt(prompt, cfg)
+
+    console.print(f"\n[bold green]Optimized Prompt:[/]\n{optimized}\n")
+
+    if copy:
+        try:
+            # Works natively on macOS
+            process = subprocess.Popen("pbcopy", env={"LANG": "en_US.UTF-8"}, stdin=subprocess.PIPE)
+            process.communicate(optimized.encode("utf-8"))
+            console.print("[dim]✓ Copied to clipboard![/]")
+        except Exception as exc:
+            console.print(f"[yellow]Could not copy to clipboard: {exc}[/]")
+
+
+# ---------------------------------------------------------------------------
 # tenet status
 # ---------------------------------------------------------------------------
 
