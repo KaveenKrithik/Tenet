@@ -17,7 +17,7 @@ from rich.table import Table
 
 app = typer.Typer(
     name="tenet",
-    help="🌌 Tenet — local-first token efficiency layer for AI coding assistants.",
+    help="Tenet — local-first token efficiency layer for AI coding assistants.",
     rich_markup_mode="rich",
     no_args_is_help=True,
 )
@@ -50,11 +50,11 @@ def cmd_init(
     cfg = load_config()
     store = GraphStore(cfg.graph.db_path)
 
-    console.print(f"[bold blue]⚛ Tenet — building graph for:[/] {path}")
+    console.print(f"[bold]Tenet — building graph for:[/] {path}")
     build_full_graph(path, store)
 
     nodes = store.get_all_nodes()
-    console.print(f"[bold green]✓ Done.[/] Indexed [bold]{len(nodes)}[/] nodes → {cfg.graph.db_path}")
+    console.print(f"[green]Done.[/] Indexed [bold]{len(nodes)}[/] nodes → {cfg.graph.db_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@ def cmd_watch(
     cfg = load_config()
     store = GraphStore(cfg.graph.db_path)
 
-    console.print(f"[bold blue]👁 Watching:[/] {path} (interval={interval}s) — Ctrl-C to stop")
+    console.print(f"[bold]Watching:[/] {path} (interval={interval}s) — Ctrl-C to stop")
     watch(path, store, interval_seconds=interval)
 
 
@@ -104,13 +104,13 @@ def cmd_query(
     cfg = load_config()
     touched = [f.strip() for f in files.split(",") if f.strip()] if files else []
 
-    console.print(f"\n[bold blue]⚛ Processing:[/] {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
+    console.print(f"\n[bold]Processing:[/] {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
     if touched:
         console.print(f"[dim]Files:[/] {', '.join(touched)}")
 
     def confirm(est_tokens: int, tier: str) -> bool:
         return typer.confirm(
-            f"\n⚠️  Estimated {est_tokens:,} tokens (tier: {tier}). Proceed with escalation?"
+            f"\nEstimated {est_tokens:,} tokens (tier: {tier}). Proceed with escalation?"
         )
 
     result = process_request(
@@ -159,7 +159,7 @@ def cmd_status() -> None:
     ledger = LedgerStore(cfg.ledger.db_path)
     totals = ledger.get_totals()
 
-    table = Table(title="🌌 Tenet — Pipeline Status", show_header=True)
+    table = Table(title="Tenet — Pipeline Status", show_header=True)
     table.add_column("Metric", style="dim")
     table.add_column("Value", style="bold")
 
@@ -200,7 +200,7 @@ def cmd_dashboard() -> None:
     host = cfg.dashboard.host
     port = cfg.dashboard.port
 
-    console.print(f"[bold blue]🌐 Dashboard:[/] http://{host}:{port}")
+    console.print(f"[bold]Dashboard:[/] http://{host}:{port}")
     uvicorn.run(dash_app, host=host, port=port, log_level="warning")
 
 
