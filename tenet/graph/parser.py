@@ -54,6 +54,7 @@ _LANG_GRAMMAR_MAP = {
     "python": "python",
     "javascript": "javascript",
     "typescript": "typescript",
+    "tsx": "tsx",
 }
 
 _EXT_TO_LANG = {
@@ -61,8 +62,9 @@ _EXT_TO_LANG = {
     ".js": "javascript",
     ".mjs": "javascript",
     ".cjs": "javascript",
+    ".jsx": "tsx",
     ".ts": "typescript",
-    ".tsx": "typescript",
+    ".tsx": "tsx",
 }
 
 
@@ -119,8 +121,9 @@ def _extract_python_nodes(tree_root, source_bytes: bytes, file_path: str) -> lis
     # Top-level module node
     module_id = Node.make_id(file_path, "<module>")
     module_hash = Node.make_content_hash(source_str)
+    module_name = Path(file_path).name or "<module>"
     nodes.append(Node(
-        id=module_id, type="module", name="<module>",
+        id=module_id, type="module", name=module_name,
         file_path=file_path,
         line_start=1, line_end=source_str.count("\n") + 1,
         content_hash=module_hash,
@@ -272,8 +275,9 @@ def _extract_js_nodes(tree_root, source_bytes: bytes, file_path: str) -> list[No
     source_str = source_bytes.decode("utf-8", errors="replace")
 
     module_id = Node.make_id(file_path, "<module>")
+    module_name = Path(file_path).name or "<module>"
     nodes.append(Node(
-        id=module_id, type="module", name="<module>",
+        id=module_id, type="module", name=module_name,
         file_path=file_path,
         line_start=1, line_end=source_str.count("\n") + 1,
         content_hash=Node.make_content_hash(source_str),
@@ -286,48 +290,129 @@ def _extract_js_nodes(tree_root, source_bytes: bytes, file_path: str) -> list[No
     }
     CLASS_TYPES = {"class_declaration", "class_expression"}
 
+    def get_js_func_name(node) -> Optional[str]:
+        name_node = node.child_by_field_name("name")
+        if name_node:
+            return _text(name_node, source_bytes)
+        if node.parent:
+            if node.parent.type == "variable_declarator":
+                pname = node.parent.child_by_field_name("name")
+                if pname:
+                    return _text(pname, source_bytes)
+            elif node.parent.type == "pair":
+                key = node.parent.child_by_field_name("key")
+                if key:
+                    return _text(key, source_bytes)
+            elif node.parent.type == "assignment_expression":
+                left = node.parent.child_by_field_name("left")
+                if left:
+                    return _text(left, source_bytes)
+            elif node.parent.type == "export_statement":
+                return Path(file_path).stem or "default"
+        return None
+
     def walk(node, class_name: Optional[str] = None):
         if node.type in FUNC_TYPES:
-            name_node = node.child_by_field_name("name")
-            name = _text(name_node, source_bytes) if name_node else "<anonymous>"
-            qualified = f"{class_name}.{name}" if class_name else name
-            node_text = _text(node, source_bytes)
-            nodes.append(Node(
-                id=Node.make_id(file_path, qualified),
-                type="method" if class_name else "function",
-                name=qualified,
-                file_path=file_path,
-                line_start=node.start_point[0] + 1,
-                line_end=node.end_point[0] + 1,
-                content_hash=Node.make_content_hash(node_text),
-            ))
+            name = get_js_func_name(node)
+            if name:  # Skip anonymous unnamed callbacks to avoid graph noise
+                qualified = f"{class_name}.{name}" if class_name else name
+                node_text = _text(node, source_bytes)
+                nodes.append(Node(
+                    id=Node.make_id(file_path, qualified),
+                    type="method" if class_name or node.type == "method_definition" else "function",
+                    name=qualified,
+                    file_path=file_path,
+                    line_start=node.start_point[0] + 1,
+                    line_end=node.end_point[0] + 1,
+                    content_hash=Node.make_content_hash(node_text),
+                ))
             for child in node.children:
                 walk(child, class_name)
         elif node.type in CLASS_TYPES:
             name_node = node.child_by_field_name("name")
-            if name_node:
-                cls_name = _text(name_node, source_bytes)
-                cls_text = _text(node, source_bytes)
-                nodes.append(Node(
-                    id=Node.make_id(file_path, cls_name),
-                    type="class",
-                    name=cls_name,
-                    file_path=file_path,
-                    line_start=node.start_point[0] + 1,
-                    line_end=node.end_point[0] + 1,
-                    content_hash=Node.make_content_hash(cls_text),
-                ))
-                for child in node.children:
-                    walk(child, cls_name)
-            else:
-                for child in node.children:
-                    walk(child, class_name)
+            cls_name = _text(name_node, source_bytes) if name_node else Path(file_path).stem
+            cls_text = _text(node, source_bytes)
+            nodes.append(Node(
+                id=Node.make_id(file_path, cls_name),
+                type="class",
+                name=cls_name,
+                file_path=file_path,
+                line_start=node.start_point[0] + 1,
+                line_end=node.end_point[0] + 1,
+                content_hash=Node.make_content_hash(cls_text),
+            ))
+            for child in node.children:
+                walk(child, cls_name)
         else:
             for child in node.children:
                 walk(child, class_name)
 
     walk(tree_root)
     return nodes
+
+
+def _extract_js_edges(tree_root, source_bytes: bytes, file_path: str, nodes: list[Node]) -> list[Edge]:
+    edges: list[Edge] = []
+    node_by_name: dict[str, Node] = {n.name: n for n in nodes}
+    module_node = node_by_name.get("<module>")
+
+    def walk_calls(node, current_func: Optional[Node]):
+        if node.type == "call_expression":
+            func_node = node.child_by_field_name("function")
+            if func_node:
+                callee_name = None
+                if func_node.type == "identifier":
+                    callee_name = _text(func_node, source_bytes)
+                elif func_node.type == "member_expression":
+                    prop = func_node.child_by_field_name("property")
+                    if prop:
+                        callee_name = _text(prop, source_bytes)
+
+                if callee_name:
+                    target = node_by_name.get(callee_name)
+                    if target and current_func and target.id != current_func.id:
+                        edges.append(Edge(
+                            source_id=current_func.id,
+                            target_id=target.id,
+                            edge_type="calls",
+                        ))
+        for child in node.children:
+            walk_calls(child, current_func)
+
+    def walk_imports(node):
+        if node.type in ("import_statement", "import_declaration"):
+            source_node = node.child_by_field_name("source")
+            target_str = _text(source_node, source_bytes).strip("'\"") if source_node else _text(node, source_bytes)
+            target_id = Node.make_id(target_str, "<module>")
+            src_id = module_node.id if module_node else Node.make_id(file_path, "<module>")
+            edges.append(Edge(
+                source_id=src_id,
+                target_id=target_id,
+                edge_type="imports",
+            ))
+        for child in node.children:
+            walk_imports(child)
+
+    def find_func_scope(node, current_func: Optional[Node] = None):
+        if node.type in ("function_declaration", "generator_function_declaration", "method_definition"):
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = _text(name_node, source_bytes)
+                current_func = node_by_name.get(name, current_func)
+        elif node.type in ("arrow_function", "function_expression"):
+            if node.parent and node.parent.type == "variable_declarator":
+                pname = node.parent.child_by_field_name("name")
+                if pname:
+                    name = _text(pname, source_bytes)
+                    current_func = node_by_name.get(name, current_func)
+
+        walk_calls(node, current_func)
+        for child in node.children:
+            find_func_scope(child, current_func)
+
+    find_func_scope(tree_root)
+    walk_imports(tree_root)
+    return edges
 
 
 # ---------------------------------------------------------------------------
@@ -337,8 +422,7 @@ def _extract_js_nodes(tree_root, source_bytes: bytes, file_path: str) -> list[No
 def parse_file(path: str) -> list[Node]:
     """Parse a source file with tree-sitter and extract Node records.
 
-    Supports Python, JavaScript, TypeScript.  Returns an empty list if the
-    language is unsupported or the file cannot be read/parsed.
+    Supports Python, JavaScript, TypeScript, TSX, JSX.
     """
     lang = detect_language(path)
     if lang is None:
@@ -365,11 +449,7 @@ def parse_file(path: str) -> list[Node]:
 
 
 def extract_edges(path: str, nodes: list[Node]) -> list[Edge]:
-    """Extract call/import/inheritance edges from a source file.
-
-    ``nodes`` should be the result of a prior ``parse_file`` call for the
-    same path so that node IDs are consistent.
-    """
+    """Extract call/import/inheritance edges from a source file."""
     lang = detect_language(path)
     if lang is None or not nodes:
         return []
@@ -384,5 +464,5 @@ def extract_edges(path: str, nodes: list[Node]) -> list[Edge]:
 
     if lang == "python":
         return _extract_python_edges(tree.root_node, source_bytes, path, nodes)
-    # JS/TS edge extraction would follow the same pattern
-    return []
+    else:
+        return _extract_js_edges(tree.root_node, source_bytes, path, nodes)
