@@ -75,14 +75,14 @@ Tenet is a local-first token efficiency layer for AI coding assistants. It inter
   - `full`: Architectural scopes (> 20 nodes) -> reasoning models with safety confirmation gates.
 - Multi-agent planner analyzes concurrent agent task scopes and outputs `MERGE` or `PARALLEL` execution plans based on Jaccard node overlap.
 
-### 6. Ledger, Anomaly Detection & Dashboard (Stage 6)
+### 6. Ledger, Anomaly Detection & Futuristic UI (Stage 6)
 - Persistent request accounting in SQLite with module-level spend attribution.
 - Anomaly detection engine flags requests exceeding 3x the module baseline.
-- Dokploy-style web UI with an interactive Canvas Knowledge Graph visualizer, Pipeline Simulator, and Ledger Explorer.
+- Dokploy-style web UI with an interactive vector Canvas Knowledge Graph visualizer, Pipeline Simulator, and Ledger Explorer.
 
 ---
 
-## Setup Guide
+## Setup & Global Installation
 
 ### Prerequisites
 
@@ -92,12 +92,12 @@ Tenet is a local-first token efficiency layer for AI coding assistants. It inter
 
 ### 1. Installation
 
-Clone the repository and install dependencies in an isolated virtual environment:
+Clone the repository and install Tenet:
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/tenet.git
-cd tenet
+git clone https://github.com/KaveenKrithik/Tenet.git
+cd Tenet
 
 # Create virtual environment with uv
 uv venv .venv
@@ -107,55 +107,69 @@ source .venv/bin/activate
 uv pip install -e .
 ```
 
-### 2. (Optional) Start Local Ollama for Stage 4
+### 2. Global CLI Access (Run from Anywhere)
+
+To use `tenet` in any terminal or project folder without activating virtual environments manually:
 
 ```bash
-# Start Ollama service
-ollama serve
+mkdir -p ~/.local/bin
+ln -sf $(pwd)/.venv/bin/tenet ~/.local/bin/tenet
 
-# Pull the default triage model
-ollama pull qwen2.5-coder:7b
+# Ensure ~/.local/bin is in your PATH (e.g. in ~/.zshrc or ~/.bashrc)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ---
 
-## Usage
+## Workflows
 
-### Index a Codebase
+### Workflow A: Native Chat Assistant Integration (Recommended)
 
-Build the initial knowledge graph for any project directory:
+When using Antigravity IDE or compatible agentic coding tools, you do not need to run terminal commands manually. Tenet includes a native skill in `.agents/skills/tenet/SKILL.md`.
 
-```bash
-tenet init path/to/src
+Simply type your prompt directly in the chat:
+
+```text
+Add input validation to the login endpoint in auth.js
+```
+or
+```text
+/tenet refactor calculate_totals to support multi-currency
 ```
 
-### Query Through the Pipeline
+**What happens automatically:**
+1. The assistant queries Tenet behind the scenes.
+2. Checks local semantic cache (returns 0-token response if previously solved).
+3. Pulls the compressed 2-hop AST diff context (saving 60%–80% of tokens).
+4. Delivers the verified response directly in chat.
 
-Run a prompt against specific files or modules:
+---
+
+### Workflow B: Command Line Interface (Any Project)
+
+Open any project directory on your machine:
 
 ```bash
-tenet query "Add error handling to calculate_totals" --files src/core/calculator.py
-```
+# 1. Index the project codebase
+cd /path/to/your/project
+tenet init .
 
-### Check Token Efficiency & Status
+# 2. Launch the futuristic analytics dashboard
+tenet dashboard
 
-View cumulative token savings and cache hit metrics in the terminal:
+# 3. Query via the pipeline
+tenet query "Add error handling to db connector" --files src/db.py
 
-```bash
+# 4. Check cumulative token savings
 tenet status
 ```
 
-### Start the Background File Watcher
+---
 
-Keep the knowledge graph and AST indices updated on every file save:
+## Analytics Dashboard
 
-```bash
-tenet watch path/to/src
-```
-
-### Launch the Analytics Dashboard
-
-Start the local web UI:
+Launch the local web UI from any indexed project:
 
 ```bash
 tenet dashboard
@@ -163,10 +177,10 @@ tenet dashboard
 
 Navigate to `http://127.0.0.1:8420` to access:
 - **Overview**: Real-time token efficiency cards, module spend charts, and anomalies.
-- **Knowledge Graph Visualizer**: Interactive force-directed canvas graph with node inspection and source code drawers.
-- **Pipeline Simulator**: Sandbox to test and animate prompt execution through all 6 stages.
+- **Knowledge Graph Visualizer**: Interactive force-directed canvas topology with HUD telemetry, particle animation, node search, and slide-over source code drawer.
+- **Pipeline Simulator**: Test and animate prompt execution through all 6 stages.
 - **Multi-Agent Planner**: Overlap matrix and merge recommendations for subagents.
-- **Request Ledger**: Filterable table of historical requests.
+- **Request Ledger**: Complete historical request trace.
 
 ---
 
@@ -222,7 +236,7 @@ dashboard:
 
 ## REST API Reference
 
-Tenet exposes a local REST API for integration with custom tools and editor plugins:
+Tenet exposes a local REST API for editor integration:
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
