@@ -3,46 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tenet — Token Efficiency Layer</title>
-  <meta name="description" content="Dokploy-inspired developer analytics, interactive knowledge graph, and pipeline simulator for Tenet token efficiency layer." />
+  <title>Tenet</title>
+  <meta name="description" content="Local-first token efficiency layer and futuristic knowledge graph for AI coding workflows." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-base: #09090b;
-      --bg-sidebar: #0e0e11;
-      --bg-card: #141417;
-      --bg-card-subtle: #19191d;
-      --bg-hover: #1f1f24;
-      --bg-active: #27272e;
-      --border-base: #27272a;
-      --border-muted: #1f1f23;
-      --border-focus: #3f3f46;
+      --bg-base: #08080a;
+      --bg-sidebar: #0d0d10;
+      --bg-card: #121216;
+      --bg-card-subtle: #17171c;
+      --bg-hover: #1c1c22;
+      --bg-active: #22222a;
+      --border-base: #24242c;
+      --border-subtle: #1a1a20;
+      --border-focus: #3e3e4a;
       
-      --text-main: #fafafa;
+      --text-main: #f4f4f5;
       --text-muted: #a1a1aa;
       --text-dim: #71717a;
       
-      --brand-primary: #6366f1;
-      --brand-primary-hover: #4f46e5;
-      --brand-glow: rgba(99, 102, 241, 0.15);
+      --accent-glow: #38bdf8;
+      --node-func: #38bdf8;
+      --node-class: #818cf8;
+      --node-mod: #a78bfa;
+      --node-method: #2dd4bf;
       
-      --accent-emerald: #10b981;
-      --accent-emerald-subtle: rgba(16, 185, 129, 0.1);
-      --accent-amber: #f59e0b;
-      --accent-amber-subtle: rgba(245, 158, 11, 0.1);
-      --accent-sky: #0ea5e9;
-      --accent-sky-subtle: rgba(14, 165, 233, 0.1);
-      --accent-violet: #8b5cf6;
-      --accent-violet-subtle: rgba(139, 92, 246, 0.1);
-      --accent-rose: #f43f5e;
-      --accent-rose-subtle: rgba(244, 63, 94, 0.1);
-      
-      --radius-sm: 6px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
-      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 5px;
+      --radius-md: 7px;
+      --radius-lg: 10px;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'Geist Mono', monospace;
     }
 
     *, *::before, *::after {
@@ -54,13 +46,14 @@
     body {
       background-color: var(--bg-base);
       color: var(--text-main);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: var(--font-sans);
       min-height: 100vh;
       display: flex;
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.5;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
     }
 
     /* Layout structure */
@@ -72,7 +65,7 @@
 
     /* Sidebar */
     .sidebar {
-      width: 260px;
+      width: 240px;
       background-color: var(--bg-sidebar);
       border-right: 1px solid var(--border-base);
       display: flex;
@@ -86,75 +79,64 @@
     }
 
     .sidebar-header {
-      padding: 20px 18px;
+      padding: 18px 16px;
       border-bottom: 1px solid var(--border-base);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .brand-logo {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
-      border-radius: var(--radius-md);
+      width: 26px;
+      height: 26px;
+      background: #fafafa;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: #09090b;
       font-weight: 700;
-      font-size: 16px;
-      box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
-    }
-
-    .brand-text {
-      display: flex;
-      flex-direction: column;
+      font-size: 14px;
+      font-family: var(--font-mono);
     }
 
     .brand-name {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--text-main);
       letter-spacing: -0.02em;
     }
 
-    .brand-badge {
-      font-size: 11px;
-      color: var(--text-dim);
-      font-family: var(--font-mono);
-    }
-
     .sidebar-nav {
       flex: 1;
-      padding: 16px 12px;
+      padding: 14px 10px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       overflow-y: auto;
     }
 
     .nav-label {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       color: var(--text-dim);
-      padding: 10px 12px 6px;
+      padding: 10px 10px 4px;
     }
 
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
+      gap: 9px;
+      padding: 8px 10px;
       color: var(--text-muted);
       border-radius: var(--radius-sm);
       cursor: pointer;
       text-decoration: none;
       font-size: 13px;
-      font-weight: 500;
-      transition: all 0.15s ease;
+      font-weight: 450;
+      transition: all 0.12s ease;
       border: 1px solid transparent;
     }
 
@@ -170,34 +152,44 @@
     }
 
     .nav-item svg {
-      width: 16px;
-      height: 16px;
-      stroke-width: 1.8;
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.7;
       flex-shrink: 0;
+      color: var(--text-dim);
+    }
+
+    .nav-item.active svg {
+      color: var(--text-main);
     }
 
     .sidebar-footer {
-      padding: 14px 18px;
+      padding: 12px 16px;
       border-top: 1px solid var(--border-base);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-dim);
     }
 
     .status-indicator {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
     }
 
     .status-dot {
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background-color: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
+      background-color: #52525b;
+      box-shadow: 0 0 6px #52525b;
+    }
+
+    .status-dot.live {
+      background-color: #22c55e;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
     }
 
     /* Main Content Area */
@@ -210,9 +202,9 @@
     }
 
     .top-nav {
-      height: 58px;
+      height: 52px;
       border-bottom: 1px solid var(--border-base);
-      padding: 0 28px;
+      padding: 0 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -225,9 +217,9 @@
     .breadcrumb {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text-muted);
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-dim);
     }
 
     .breadcrumb-active {
@@ -238,22 +230,22 @@
     .top-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 14px;
+      padding: 6px 12px;
       border-radius: var(--radius-sm);
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
       border: 1px solid var(--border-base);
       background-color: var(--bg-card);
       color: var(--text-main);
-      transition: all 0.15s ease;
+      transition: all 0.12s ease;
       font-family: inherit;
     }
 
@@ -263,24 +255,24 @@
     }
 
     .btn-primary {
-      background-color: var(--brand-primary);
-      border-color: var(--brand-primary);
-      color: #fff;
+      background-color: #fafafa;
+      border-color: #fafafa;
+      color: #09090b;
     }
 
     .btn-primary:hover {
-      background-color: var(--brand-primary-hover);
-      border-color: var(--brand-primary-hover);
+      background-color: #e4e4e7;
+      border-color: #e4e4e7;
     }
 
     .btn-sm {
-      padding: 5px 10px;
-      font-size: 12px;
+      padding: 4px 9px;
+      font-size: 11.5px;
     }
 
     .content-container {
-      padding: 28px;
-      max-width: 1400px;
+      padding: 24px;
+      max-width: 1440px;
       width: 100%;
       margin: 0 auto;
     }
@@ -293,17 +285,17 @@
       display: block;
     }
 
-    /* Dokploy Card Aesthetics */
+    /* Cards */
     .card {
       background-color: var(--bg-card);
       border: 1px solid var(--border-base);
       border-radius: var(--radius-md);
       overflow: hidden;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .card-header {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border-base);
       display: flex;
       align-items: center;
@@ -311,39 +303,38 @@
     }
 
     .card-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text-main);
       letter-spacing: -0.01em;
     }
 
     .card-subtitle {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 2px;
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-top: 1px;
     }
 
     .card-body {
-      padding: 20px;
+      padding: 18px;
     }
 
     /* Metric Grid */
     .metric-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
     }
 
     .metric-card {
       background-color: var(--bg-card);
       border: 1px solid var(--border-base);
       border-radius: var(--radius-md);
-      padding: 18px 20px;
+      padding: 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      position: relative;
+      gap: 6px;
     }
 
     .metric-top {
@@ -351,23 +342,20 @@
       align-items: center;
       justify-content: space-between;
       color: var(--text-muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
     }
 
     .metric-value {
-      font-size: 26px;
-      font-weight: 700;
+      font-size: 24px;
+      font-weight: 600;
       letter-spacing: -0.03em;
       color: var(--text-main);
       font-family: var(--font-mono);
     }
 
     .metric-foot {
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 11px;
       color: var(--text-dim);
     }
 
@@ -375,35 +363,14 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 2px 8px;
-      border-radius: 12px;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
       font-family: var(--font-mono);
-    }
-
-    .badge-emerald {
-      background-color: var(--accent-emerald-subtle);
-      color: var(--accent-emerald);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-
-    .badge-amber {
-      background-color: var(--accent-amber-subtle);
-      color: var(--accent-amber);
-      border: 1px solid rgba(245, 158, 11, 0.2);
-    }
-
-    .badge-sky {
-      background-color: var(--accent-sky-subtle);
-      color: var(--accent-sky);
-      border: 1px solid rgba(14, 165, 233, 0.2);
-    }
-
-    .badge-violet {
-      background-color: var(--accent-violet-subtle);
-      color: var(--accent-violet);
-      border: 1px solid rgba(139, 92, 246, 0.2);
+      background-color: var(--bg-card-subtle);
+      border: 1px solid var(--border-base);
+      color: var(--text-muted);
     }
 
     /* Tables */
@@ -415,23 +382,23 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12.5px;
     }
 
     th {
       text-align: left;
-      padding: 10px 16px;
+      padding: 9px 14px;
       background-color: var(--bg-card-subtle);
-      color: var(--text-muted);
+      color: var(--text-dim);
       font-weight: 500;
-      font-size: 12px;
+      font-size: 11.5px;
       border-bottom: 1px solid var(--border-base);
       white-space: nowrap;
     }
 
     td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border-muted);
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-subtle);
       color: var(--text-main);
       vertical-align: middle;
     }
@@ -440,11 +407,11 @@
       background-color: var(--bg-hover);
     }
 
-    /* Visualizer & Canvas layout */
+    /* Futuristic Knowledge Graph Canvas Layout */
     .graph-container {
       position: relative;
-      height: 600px;
-      background-color: #0c0c0e;
+      height: 640px;
+      background-color: #060608;
       border-radius: var(--radius-md);
       overflow: hidden;
       border: 1px solid var(--border-base);
@@ -454,23 +421,19 @@
       width: 100%;
       height: 100%;
       display: block;
-      cursor: grab;
+      cursor: crosshair;
     }
 
-    #graphCanvas:active {
-      cursor: grabbing;
-    }
-
-    .graph-controls {
+    .graph-hud {
       position: absolute;
       top: 14px;
       left: 14px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      background-color: rgba(20, 20, 23, 0.85);
-      backdrop-filter: blur(8px);
-      padding: 6px 10px;
+      gap: 10px;
+      background-color: rgba(13, 13, 16, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 6px 12px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-base);
       z-index: 5;
@@ -482,8 +445,26 @@
       color: var(--text-main);
       font-size: 12px;
       outline: none;
-      width: 160px;
+      width: 180px;
       font-family: inherit;
+    }
+
+    .graph-telemetry {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background-color: rgba(13, 13, 16, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-base);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      z-index: 5;
     }
 
     .graph-legend {
@@ -492,38 +473,41 @@
       left: 14px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      background-color: rgba(20, 20, 23, 0.85);
-      backdrop-filter: blur(8px);
+      gap: 14px;
+      background-color: rgba(13, 13, 16, 0.85);
+      backdrop-filter: blur(12px);
       padding: 6px 12px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-base);
       font-size: 11px;
-      color: var(--text-muted);
+      font-family: var(--font-mono);
+      color: var(--text-dim);
       z-index: 5;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
 
     .legend-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
     }
 
+    /* Node Inspector Drawer */
     .graph-drawer {
       position: absolute;
       top: 0;
-      right: -380px;
-      width: 360px;
+      right: -400px;
+      width: 380px;
       height: 100%;
-      background-color: var(--bg-sidebar);
+      background-color: rgba(13, 13, 16, 0.95);
+      backdrop-filter: blur(16px);
       border-left: 1px solid var(--border-base);
-      transition: right 0.25s ease;
+      transition: right 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 6;
       display: flex;
       flex-direction: column;
@@ -535,7 +519,7 @@
     }
 
     .drawer-header {
-      padding: 16px 18px;
+      padding: 16px;
       border-bottom: 1px solid var(--border-base);
       display: flex;
       align-items: center;
@@ -543,15 +527,15 @@
     }
 
     .drawer-body {
-      padding: 18px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       font-size: 12px;
     }
 
     .code-block {
-      background-color: #08080a;
+      background-color: #060608;
       border: 1px solid var(--border-base);
       border-radius: var(--radius-sm);
       padding: 12px;
@@ -559,7 +543,7 @@
       font-size: 11.5px;
       color: #e4e4e7;
       overflow-x: auto;
-      max-height: 240px;
+      max-height: 260px;
       white-space: pre;
     }
 
@@ -567,7 +551,7 @@
     .sim-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      gap: 20px;
     }
 
     @media (max-width: 960px) {
@@ -580,13 +564,13 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .form-label {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 500;
-      color: var(--text-muted);
+      color: var(--text-dim);
     }
 
     .form-input, .form-textarea {
@@ -594,21 +578,21 @@
       background-color: var(--bg-card-subtle);
       border: 1px solid var(--border-base);
       border-radius: var(--radius-sm);
-      padding: 10px 12px;
+      padding: 9px 11px;
       color: var(--text-main);
       font-family: inherit;
-      font-size: 13px;
+      font-size: 12.5px;
       outline: none;
-      transition: border-color 0.15s ease;
+      transition: border-color 0.12s ease;
     }
 
     .form-input:focus, .form-textarea:focus {
-      border-color: var(--brand-primary);
+      border-color: var(--border-focus);
     }
 
     .form-textarea {
       resize: vertical;
-      min-height: 100px;
+      min-height: 90px;
       font-family: var(--font-mono);
       font-size: 12px;
     }
@@ -616,38 +600,40 @@
     .trace-step {
       display: flex;
       align-items: flex-start;
-      gap: 14px;
-      padding: 12px 14px;
+      gap: 12px;
+      padding: 11px 13px;
       border-radius: var(--radius-sm);
-      border: 1px solid var(--border-muted);
+      border: 1px solid var(--border-subtle);
       background-color: var(--bg-card-subtle);
-      margin-bottom: 10px;
-      transition: all 0.2s ease;
+      margin-bottom: 8px;
+      transition: all 0.15s ease;
     }
 
     .trace-step.active {
-      border-color: var(--brand-primary);
-      background-color: rgba(99, 102, 241, 0.05);
+      border-color: var(--border-focus);
+      background-color: var(--bg-active);
     }
 
     .trace-step-number {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background-color: var(--bg-active);
-      color: var(--text-muted);
+      width: 20px;
+      height: 20px;
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-base);
+      color: var(--text-dim);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 11px;
       font-family: var(--font-mono);
-      font-weight: 600;
+      font-weight: 500;
       flex-shrink: 0;
     }
 
     .trace-step.active .trace-step-number {
-      background-color: var(--brand-primary);
-      color: #fff;
+      background-color: #fafafa;
+      color: #09090b;
+      border-color: #fafafa;
     }
 
     .trace-step-content {
@@ -658,13 +644,13 @@
     }
 
     .trace-step-title {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 12.5px;
+      font-weight: 500;
       color: var(--text-main);
     }
 
     .trace-step-desc {
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-dim);
     }
 
@@ -672,13 +658,13 @@
     .bar-row {
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 12px;
+      gap: 12px;
+      margin-bottom: 10px;
       font-size: 12px;
     }
 
     .bar-label {
-      width: 140px;
+      width: 130px;
       font-family: var(--font-mono);
       color: var(--text-muted);
       overflow: hidden;
@@ -688,26 +674,26 @@
 
     .bar-track {
       flex: 1;
-      height: 18px;
+      height: 14px;
       background-color: var(--bg-card-subtle);
-      border-radius: var(--radius-sm);
+      border-radius: 2px;
       overflow: hidden;
       display: flex;
     }
 
     .bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, #6366f1 0%, #38bdf8 100%);
-      border-radius: var(--radius-sm);
-      transition: width 0.4s ease;
+      background: #3f3f46;
+      border-radius: 2px;
+      transition: width 0.3s ease;
     }
 
     .bar-value {
-      width: 70px;
+      width: 60px;
       text-align: right;
       font-family: var(--font-mono);
       color: var(--text-main);
-      font-weight: 500;
+      font-size: 11.5px;
     }
   </style>
 </head>
@@ -718,14 +704,11 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="brand-logo">T</div>
-        <div class="brand-text">
-          <span class="brand-name">Tenet</span>
-          <span class="brand-badge">v0.1.0 • local-first</span>
-        </div>
+        <span class="brand-name">Tenet</span>
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-label">Management</div>
+        <div class="nav-label">Layer</div>
         <a class="nav-item active" data-tab="overview">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
           Overview
@@ -750,10 +733,10 @@
 
       <div class="sidebar-footer">
         <div class="status-indicator">
-          <div class="status-dot"></div>
-          <span>Engine Active</span>
+          <div class="status-dot live"></div>
+          <span>Active</span>
         </div>
-        <span id="pollerBadge" style="font-family: var(--font-mono);">8420</span>
+        <span style="font-family: var(--font-mono);">:8420</span>
       </div>
     </aside>
 
@@ -768,7 +751,7 @@
         </div>
         <div class="top-actions">
           <button class="btn btn-sm" id="btnRefresh">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
             Refresh
           </button>
         </div>
@@ -781,31 +764,30 @@
           <div class="metric-grid">
             <div class="metric-card">
               <div class="metric-top">
-                <span>Total Savings</span>
-                <span class="badge badge-emerald">Efficiency</span>
+                <span>Tokens Saved</span>
+                <span class="badge">Net Savings</span>
               </div>
               <div class="metric-value" id="valSavedTokens">0</div>
               <div class="metric-foot">
-                <span>Tokens saved via Cache & AST compression</span>
+                <span>Prevented upstream API context burn</span>
               </div>
             </div>
 
             <div class="metric-card">
               <div class="metric-top">
                 <span>Cache Hit Rate</span>
-                <span class="badge badge-sky">Stage 3</span>
+                <span class="badge">Stage 3</span>
               </div>
               <div class="metric-value" id="valCacheHitRate">0.0%</div>
               <div class="metric-foot">
                 <span id="valCacheHits">0 hits</span>
-                <span>• 0 token cost</span>
               </div>
             </div>
 
             <div class="metric-card">
               <div class="metric-top">
-                <span>Total Invocations</span>
-                <span class="badge badge-violet">Ledger</span>
+                <span>Total Requests</span>
+                <span class="badge">Ledger</span>
               </div>
               <div class="metric-value" id="valTotalRequests">0</div>
               <div class="metric-foot">
@@ -816,27 +798,27 @@
             <div class="metric-card">
               <div class="metric-top">
                 <span>Actual Spend</span>
-                <span class="badge badge-amber">Tokens</span>
+                <span class="badge">Tokens</span>
               </div>
               <div class="metric-value" id="valActualTokens">0</div>
               <div class="metric-foot">
-                <span>vs <span id="valNaiveTokens">0</span> naive</span>
+                <span>vs <span id="valNaiveTokens">0</span> unpruned</span>
               </div>
             </div>
           </div>
 
           <!-- Spend by Module & Anomalies Grid -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
             <!-- Module Spend -->
             <div class="card" style="margin-bottom: 0;">
               <div class="card-header">
                 <div>
                   <h3 class="card-title">Token Spend by Module</h3>
-                  <p class="card-subtitle">Per-directory token attribution</p>
+                  <p class="card-subtitle">Direct attribution per directory</p>
                 </div>
               </div>
               <div class="card-body" id="moduleSpendList">
-                <div style="color: var(--text-dim); text-align: center; padding: 20px;">No module data recorded yet.</div>
+                <div style="color: var(--text-dim); text-align: center; padding: 18px;">No module data recorded yet.</div>
               </div>
             </div>
 
@@ -844,8 +826,8 @@
             <div class="card" style="margin-bottom: 0;">
               <div class="card-header">
                 <div>
-                  <h3 class="card-title">Detected Anomalies</h3>
-                  <p class="card-subtitle">Requests exceeding 3x module baseline</p>
+                  <h3 class="card-title">Anomalies</h3>
+                  <p class="card-subtitle">Spikes exceeding 3x module baseline</p>
                 </div>
               </div>
               <div class="card-body" style="padding: 0;">
@@ -861,7 +843,7 @@
                     </thead>
                     <tbody id="anomaliesTableBody">
                       <tr>
-                        <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 24px;">No token spikes detected. All operations normal.</td>
+                        <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 20px;">No anomalies detected.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -874,8 +856,8 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Recent Activity</h3>
-                <p class="card-subtitle">Chronological ledger of pipeline requests</p>
+                <h3 class="card-title">Recent Invocations</h3>
+                <p class="card-subtitle">Chronological ledger trace</p>
               </div>
             </div>
             <div class="card-body" style="padding: 0;">
@@ -884,16 +866,16 @@
                   <thead>
                     <tr>
                       <th>ID</th>
-                      <th>Stage Reached</th>
+                      <th>Stage</th>
                       <th>Module</th>
-                      <th>Scope Nodes</th>
+                      <th>Scope</th>
                       <th>Tokens (Actual / Naive)</th>
-                      <th>Prompt Summary</th>
+                      <th>Prompt</th>
                     </tr>
                   </thead>
                   <tbody id="recentTableBody">
                     <tr>
-                      <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading ledger activity...</td>
+                      <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 20px;">Loading activity...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -902,29 +884,38 @@
           </div>
         </section>
 
-        <!-- TAB 2: KNOWLEDGE GRAPH VISUALIZER -->
+        <!-- TAB 2: FUTURISTIC KNOWLEDGE GRAPH VISUALIZER -->
         <section class="tab-view" id="tab-graph">
           <div class="card" style="margin-bottom: 0;">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Interactive Knowledge Graph</h3>
-                <p class="card-subtitle">AST nodes and call/import dependency graph. Click nodes to inspect source.</p>
+                <h3 class="card-title">AST Knowledge Graph</h3>
+                <p class="card-subtitle">Real-time symbol dependency topology. Hover or click nodes to inspect.</p>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button class="btn btn-sm" id="btnResetGraph">Reset View</button>
+                <button class="btn btn-sm" id="btnResetGraph">Recenter</button>
               </div>
             </div>
             <div class="graph-container">
-              <div class="graph-controls">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
-                <input type="text" id="graphSearchInput" class="graph-search" placeholder="Search node or file..." />
+              <!-- HUD search -->
+              <div class="graph-hud">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                <input type="text" id="graphSearchInput" class="graph-search" placeholder="Filter symbol or file..." />
               </div>
 
+              <!-- Telemetry -->
+              <div class="graph-telemetry" id="graphTelemetry">
+                <span>NODES: <span id="telemetryNodes" style="color:var(--text-main);">0</span></span>
+                <span>EDGES: <span id="telemetryEdges" style="color:var(--text-main);">0</span></span>
+                <span id="telemetryFps" style="color:var(--text-dim);">60 FPS</span>
+              </div>
+
+              <!-- Legend -->
               <div class="graph-legend">
-                <div class="legend-item"><div class="legend-dot" style="background:#6366f1;"></div> Function</div>
-                <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6;"></div> Method</div>
-                <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Class</div>
-                <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9;"></div> Module</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--node-func);"></div> func</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--node-method);"></div> method</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--node-class);"></div> class</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--node-mod);"></div> module</div>
               </div>
 
               <canvas id="graphCanvas"></canvas>
@@ -934,23 +925,23 @@
                 <div class="drawer-header">
                   <div>
                     <h4 style="font-size: 13px; font-weight:600;" id="drawerNodeName">Node Details</h4>
-                    <span id="drawerNodeType" class="badge badge-sky" style="margin-top: 4px;">function</span>
+                    <span id="drawerNodeType" class="badge" style="margin-top: 4px;">function</span>
                   </div>
                   <button class="btn btn-sm" id="btnCloseDrawer">Close</button>
                 </div>
                 <div class="drawer-body">
                   <div>
-                    <div style="color: var(--text-dim); margin-bottom: 2px;">File & Lines</div>
-                    <div style="font-family: var(--font-mono); color: var(--text-main);" id="drawerNodeFile">-</div>
+                    <div style="color: var(--text-dim); font-size:11px; margin-bottom: 2px;">FILE LOCATION</div>
+                    <div style="font-family: var(--font-mono); color: var(--text-main); font-size:11.5px;" id="drawerNodeFile">-</div>
                   </div>
 
                   <div>
-                    <div style="color: var(--text-dim); margin-bottom: 2px;">Dependencies</div>
-                    <div id="drawerNodeEdges" style="color: var(--text-muted); font-size: 11.5px;">-</div>
+                    <div style="color: var(--text-dim); font-size:11px; margin-bottom: 2px;">DEPENDENCIES</div>
+                    <div id="drawerNodeEdges" style="color: var(--text-muted); font-size: 11.5px; font-family:var(--font-mono);">-</div>
                   </div>
 
                   <div>
-                    <div style="color: var(--text-dim); margin-bottom: 6px;">Source Code</div>
+                    <div style="color: var(--text-dim); font-size:11px; margin-bottom: 4px;">EXTRACTED SOURCE</div>
                     <div class="code-block" id="drawerNodeSnippet"># No source available</div>
                   </div>
                 </div>
@@ -966,24 +957,23 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h3 class="card-title">Simulate Pipeline Execution</h3>
-                  <p class="card-subtitle">Test how prompts flow through all 6 token reduction stages</p>
+                  <h3 class="card-title">Pipeline Simulator</h3>
+                  <p class="card-subtitle">Trace prompt execution across all 6 token reduction stages</p>
                 </div>
               </div>
               <div class="card-body">
                 <div class="form-group">
                   <label class="form-label">Developer Prompt</label>
-                  <textarea id="simPrompt" class="form-textarea" placeholder="e.g. Add a function that divides two numbers and catches division by zero errors...">Add a divide function that handles division by zero</textarea>
+                  <textarea id="simPrompt" class="form-textarea" placeholder="Enter prompt...">Add a divide function that handles division by zero</textarea>
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">Target / Touched File(s)</label>
+                  <label class="form-label">Target File(s)</label>
                   <input type="text" id="simFiles" class="form-input" value="tests/fixtures/sample_a.py" placeholder="comma-separated file paths" />
                 </div>
 
-                <button class="btn btn-primary" id="btnRunSim" style="width: 100%; justify-content: center; padding: 10px;">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  Execute 6-Stage Pipeline
+                <button class="btn btn-primary" id="btnRunSim" style="width: 100%; justify-content: center; padding: 9px;">
+                  Execute Pipeline
                 </button>
               </div>
             </div>
@@ -992,16 +982,16 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h3 class="card-title">Live Execution Trace</h3>
-                  <p class="card-subtitle" id="simStatusSummary">Awaiting run...</p>
+                  <h3 class="card-title">Stage Trace</h3>
+                  <p class="card-subtitle" id="simStatusSummary">Idle</p>
                 </div>
               </div>
               <div class="card-body" id="simTraceSteps">
                 <div class="trace-step" id="step-1">
                   <div class="trace-step-number">1</div>
                   <div class="trace-step-content">
-                    <div class="trace-step-title">Knowledge Graph Resolution</div>
-                    <div class="trace-step-desc">Extracting 2-hop caller/callee subgraph around target files</div>
+                    <div class="trace-step-title">AST Knowledge Graph Scope</div>
+                    <div class="trace-step-desc">2-hop caller/callee boundary resolution</div>
                   </div>
                 </div>
 
@@ -1009,39 +999,39 @@
                   <div class="trace-step-number">2</div>
                   <div class="trace-step-content">
                     <div class="trace-step-title">AST Context Compression</div>
-                    <div class="trace-step-desc">Generating structural diffs & trimming unchanged source bodies</div>
+                    <div class="trace-step-desc">Diff summaries replace unchanged function bodies</div>
                   </div>
                 </div>
 
                 <div class="trace-step" id="step-3">
                   <div class="trace-step-number">3</div>
                   <div class="trace-step-content">
-                    <div class="trace-step-title">Semantic Cache (Stage 3)</div>
-                    <div class="trace-step-desc">Evaluating sentence embeddings against cached responses (0 tokens)</div>
+                    <div class="trace-step-title">Semantic Cache</div>
+                    <div class="trace-step-desc">Cosine similarity evaluation against dense vectors (0 tokens)</div>
                   </div>
                 </div>
 
                 <div class="trace-step" id="step-4">
                   <div class="trace-step-number">4</div>
                   <div class="trace-step-content">
-                    <div class="trace-step-title">Local Ollama Triage (Stage 4)</div>
-                    <div class="trace-step-desc">Attempting local zero-cost code generation & AST verification</div>
+                    <div class="trace-step-title">Local Ollama Triage</div>
+                    <div class="trace-step-desc">Zero-cost local model execution with syntax verification</div>
                   </div>
                 </div>
 
                 <div class="trace-step" id="step-5">
                   <div class="trace-step-number">5</div>
                   <div class="trace-step-content">
-                    <div class="trace-step-title">Tier Routing & Safety Gate (Stage 5)</div>
-                    <div class="trace-step-desc">Classifying cheap / mid / full model tier and confirming token budget</div>
+                    <div class="trace-step-title">Dynamic Tier Routing</div>
+                    <div class="trace-step-desc">Complexity classification (cheap / mid / full) and safety gate</div>
                   </div>
                 </div>
 
                 <div class="trace-step" id="step-6">
                   <div class="trace-step-number">6</div>
                   <div class="trace-step-content">
-                    <div class="trace-step-title">Ledger Recording (Stage 6)</div>
-                    <div class="trace-step-desc">Logging attribution & calculating saved token metrics</div>
+                    <div class="trace-step-title">Ledger Recording</div>
+                    <div class="trace-step-desc">Persistent accounting & token savings calculation</div>
                   </div>
                 </div>
               </div>
@@ -1054,13 +1044,13 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Multi-Agent Task Overlap Matrix</h3>
-                <p class="card-subtitle">Detects intersecting subgraphs between concurrent agent tasks to prevent redundant context & race conditions</p>
+                <h3 class="card-title">Multi-Agent Task Planning</h3>
+                <p class="card-subtitle">Detects intersecting subgraphs between concurrent agent tasks to prevent redundant context loads</p>
               </div>
-              <button class="btn btn-sm" id="btnRefreshMatrix">Re-analyze Tasks</button>
+              <button class="btn btn-sm" id="btnRefreshMatrix">Re-analyze</button>
             </div>
             <div class="card-body" id="multiAgentCards">
-              <div style="text-align:center; color: var(--text-dim); padding: 30px;">Analyzing subagent task scopes...</div>
+              <div style="text-align:center; color: var(--text-dim); padding: 24px;">Analyzing subagent task scopes...</div>
             </div>
           </div>
         </section>
@@ -1070,8 +1060,8 @@
           <div class="card">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Request Ledger Explorer</h3>
-                <p class="card-subtitle">All historical requests stored in SQLite WAL ledger</p>
+                <h3 class="card-title">Request Ledger</h3>
+                <p class="card-subtitle">SQLite WAL historical trace</p>
               </div>
             </div>
             <div class="card-body" style="padding: 0;">
@@ -1083,14 +1073,14 @@
                       <th>Timestamp</th>
                       <th>Stage</th>
                       <th>Module</th>
-                      <th>Tokens Actual</th>
-                      <th>Tokens Naive</th>
+                      <th>Actual</th>
+                      <th>Naive</th>
                       <th>Prompt</th>
                     </tr>
                   </thead>
                   <tbody id="fullLedgerBody">
                     <tr>
-                      <td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading ledger...</td>
+                      <td colspan="7" style="text-align: center; color: var(--text-dim); padding: 20px;">Loading ledger...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1179,7 +1169,7 @@
       const container = document.getElementById('moduleSpendList');
       const entries = Object.entries(spend);
       if (!entries.length) {
-        container.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No module data recorded yet.</div>';
+        container.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 18px;">No module data recorded yet.</div>';
         return;
       }
 
@@ -1201,15 +1191,15 @@
     function renderAnomalies(anomalies) {
       const tbody = document.getElementById('anomaliesTableBody');
       if (!anomalies.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 24px;">No token spikes detected. All operations normal.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 20px;">No anomalies detected.</td></tr>';
         return;
       }
 
       tbody.innerHTML = anomalies.map(a => `
         <tr>
-          <td style="font-family: var(--font-mono); font-weight: 500;">${a.module}</td>
-          <td style="font-family: var(--font-mono); color: var(--accent-amber); font-weight:600;">${a.tokens.toLocaleString()}</td>
-          <td><span class="badge badge-amber">${a.stage_reached}</span></td>
+          <td style="font-family: var(--font-mono);">${a.module}</td>
+          <td style="font-family: var(--font-mono);">${a.tokens.toLocaleString()}</td>
+          <td><span class="badge">${a.stage_reached}</span></td>
           <td style="color: var(--text-muted);">${escapeHtml(a.prompt_summary || '')}</td>
         </tr>
       `).join('');
@@ -1218,34 +1208,24 @@
     function renderRecentTable(recent) {
       const tbody = document.getElementById('recentTableBody');
       if (!recent.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">No requests recorded yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 20px;">No requests recorded yet.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = recent.map(r => {
-        const stageBadge = getStageBadge(r.stage_reached);
-        return `
-          <tr>
-            <td style="font-family: var(--font-mono); color: var(--text-dim);">#${r.id}</td>
-            <td>${stageBadge}</td>
-            <td style="font-family: var(--font-mono); font-size: 12px;">${r.module_attribution || 'root'}</td>
-            <td style="font-family: var(--font-mono);">${r.scope_node_count || 0}</td>
-            <td style="font-family: var(--font-mono);">${(r.estimated_tokens_actual || 0).toLocaleString()} <span style="color:var(--text-dim)">/ ${(r.estimated_tokens_naive || 0).toLocaleString()}</span></td>
-            <td style="color: var(--text-muted); max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.prompt_summary || '')}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function getStageBadge(stage) {
-      if (stage === 'cache_hit') return '<span class="badge badge-emerald">cache_hit</span>';
-      if (stage === 'local_success') return '<span class="badge badge-sky">local_success</span>';
-      if (stage === 'escalated') return '<span class="badge badge-violet">escalated</span>';
-      return `<span class="badge badge-amber">${stage}</span>`;
+      tbody.innerHTML = recent.map(r => `
+        <tr>
+          <td style="font-family: var(--font-mono); color: var(--text-dim);">#${r.id}</td>
+          <td><span class="badge">${r.stage_reached}</span></td>
+          <td style="font-family: var(--font-mono); font-size: 11.5px;">${r.module_attribution || 'root'}</td>
+          <td style="font-family: var(--font-mono);">${r.scope_node_count || 0}</td>
+          <td style="font-family: var(--font-mono);">${(r.estimated_tokens_actual || 0).toLocaleString()} <span style="color:var(--text-dim)">/ ${(r.estimated_tokens_naive || 0).toLocaleString()}</span></td>
+          <td style="color: var(--text-muted); max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.prompt_summary || '')}</td>
+        </tr>
+      `).join('');
     }
 
     // -------------------------------------------------------------------------
-    // Knowledge Graph Visualizer (Canvas Force Simulation)
+    // Futuristic Knowledge Graph Visualizer
     // -------------------------------------------------------------------------
     let graphData = { nodes: [], edges: [] };
     let graphInitialized = false;
@@ -1256,6 +1236,8 @@
     let isDragging = false, dragStart = { x: 0, y: 0 };
     let selectedNode = null;
     let hoveredNode = null;
+    let animFrameId = null;
+    let particleOffset = 0;
 
     async function initOrResizeGraph() {
       canvas = document.getElementById('graphCanvas');
@@ -1271,8 +1253,8 @@
         setupGraphEvents();
         await loadGraphData();
         graphInitialized = true;
+        startAnimationLoop();
       }
-      renderGraph();
     }
 
     async function loadGraphData() {
@@ -1281,7 +1263,9 @@
         if (!res.ok) return;
         graphData = await res.json();
 
-        // Build physics simulation positions
+        document.getElementById('telemetryNodes').textContent = graphData.stats.total_nodes || 0;
+        document.getElementById('telemetryEdges').textContent = graphData.stats.total_edges || 0;
+
         const width = canvas.width / window.devicePixelRatio;
         const height = canvas.height / window.devicePixelRatio;
         panX = width / 2;
@@ -1290,15 +1274,16 @@
         const count = graphData.nodes.length || 1;
         nodesState = graphData.nodes.map((n, i) => {
           const angle = (i / count) * 2 * Math.PI;
-          const radius = Math.min(width, height) * 0.35 + (Math.random() * 40 - 20);
+          const radius = Math.min(width, height) * 0.32 + (Math.random() * 30 - 15);
           return {
             ...n,
             x: Math.cos(angle) * radius,
             y: Math.sin(angle) * radius,
             vx: 0,
             vy: 0,
-            radius: n.type === 'class' ? 14 : n.type === 'module' ? 16 : 11,
-            color: getNodeColor(n.type)
+            radius: n.type === 'class' ? 12 : n.type === 'module' ? 14 : 9,
+            color: getFuturisticColor(n.type),
+            pulsePhase: Math.random() * Math.PI * 2
           };
         });
 
@@ -1308,28 +1293,25 @@
           targetNode: nodesState.find(n => n.id === e.target_id)
         })).filter(e => e.sourceNode && e.targetNode);
 
-        // Simple relaxation step
-        for (let step = 0; step < 80; step++) {
+        for (let step = 0; step < 90; step++) {
           relaxGraphStep();
         }
-        renderGraph();
       } catch (err) {
         console.error('Error loading graph:', err);
       }
     }
 
-    function getNodeColor(type) {
+    function getFuturisticColor(type) {
       switch (type) {
-        case 'function': return '#6366f1';
-        case 'method': return '#8b5cf6';
-        case 'class': return '#f59e0b';
-        case 'module': return '#0ea5e9';
+        case 'function': return '#38bdf8'; // cyan
+        case 'method': return '#2dd4bf';   // teal
+        case 'class': return '#818cf8';    // indigo
+        case 'module': return '#a78bfa';   // violet
         default: return '#71717a';
       }
     }
 
     function relaxGraphStep() {
-      // Repulsion between nodes
       for (let i = 0; i < nodesState.length; i++) {
         for (let j = i + 1; j < nodesState.length; j++) {
           const a = nodesState[i];
@@ -1337,8 +1319,8 @@
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          if (dist < 180) {
-            const force = (180 - dist) / 180 * 1.5;
+          if (dist < 160) {
+            const force = (160 - dist) / 160 * 1.2;
             a.x -= (dx / dist) * force;
             a.y -= (dy / dist) * force;
             b.x += (dx / dist) * force;
@@ -1347,15 +1329,14 @@
         }
       }
 
-      // Spring force on edges
       for (const edge of edgesState) {
         const a = edge.sourceNode;
         const b = edge.targetNode;
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const targetDist = 90;
-        const force = (dist - targetDist) * 0.04;
+        const targetDist = 95;
+        const force = (dist - targetDist) * 0.035;
         a.x += (dx / dist) * force;
         a.y += (dy / dist) * force;
         b.x -= (dx / dist) * force;
@@ -1374,21 +1355,18 @@
           isDragging = true;
           dragStart = { x: e.clientX - panX, y: e.clientY - panY };
         }
-        renderGraph();
       });
 
       window.addEventListener('mousemove', (e) => {
         if (isDragging) {
           panX = e.clientX - dragStart.x;
           panY = e.clientY - dragStart.y;
-          renderGraph();
           return;
         }
 
         if (canvas) {
           const mouse = getCanvasMouse(e);
           hoveredNode = findNodeAt(mouse.x, mouse.y);
-          renderGraph();
         }
       });
 
@@ -1399,8 +1377,7 @@
       canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const factor = e.deltaY > 0 ? 0.9 : 1.1;
-        zoom = Math.max(0.3, Math.min(3.5, zoom * factor));
-        renderGraph();
+        zoom = Math.max(0.35, Math.min(3.0, zoom * factor));
       });
 
       document.getElementById('btnResetGraph').addEventListener('click', () => {
@@ -1409,20 +1386,17 @@
         const height = canvas.height / window.devicePixelRatio;
         panX = width / 2;
         panY = height / 2;
-        renderGraph();
       });
 
       document.getElementById('btnCloseDrawer').addEventListener('click', () => {
         document.getElementById('nodeDrawer').classList.remove('open');
         selectedNode = null;
-        renderGraph();
       });
 
       document.getElementById('graphSearchInput').addEventListener('input', (e) => {
         const q = e.target.value.toLowerCase().trim();
         if (!q) {
           selectedNode = null;
-          renderGraph();
           return;
         }
         const match = nodesState.find(n => n.name.toLowerCase().includes(q) || n.file_path.toLowerCase().includes(q));
@@ -1432,7 +1406,6 @@
           panY = (canvas.height / window.devicePixelRatio) / 2 - match.y * zoom;
           openNodeDrawer(match.id);
         }
-        renderGraph();
       });
     }
 
@@ -1450,8 +1423,17 @@
       return nodesState.find(n => {
         const dx = n.x - worldX;
         const dy = n.y - worldY;
-        return (dx * dx + dy * dy) <= (n.radius + 6) * (n.radius + 6);
+        return (dx * dx + dy * dy) <= (n.radius + 8) * (n.radius + 8);
       });
+    }
+
+    function startAnimationLoop() {
+      function frame() {
+        particleOffset = (particleOffset + 0.008) % 1;
+        renderGraph();
+        animFrameId = requestAnimationFrame(frame);
+      }
+      frame();
     }
 
     function renderGraph() {
@@ -1461,6 +1443,26 @@
 
       ctx.clearRect(0, 0, w, h);
 
+      // Draw subtle futuristic grid
+      ctx.save();
+      ctx.strokeStyle = '#121217';
+      ctx.lineWidth = 1;
+      const gridSize = 40 * zoom;
+      const offsetX = panX % gridSize;
+      const offsetY = panY % gridSize;
+      
+      ctx.beginPath();
+      for (let x = offsetX; x < w; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+      }
+      for (let y = offsetY; y < h; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
       ctx.save();
       ctx.translate(panX, panY);
       ctx.scale(zoom, zoom);
@@ -1468,21 +1470,20 @@
       // Render edges
       for (const edge of edgesState) {
         const isHighlight = selectedNode && (edge.source_id === selectedNode.id || edge.target_id === selectedNode.id);
+        
         ctx.beginPath();
         ctx.moveTo(edge.sourceNode.x, edge.sourceNode.y);
         ctx.lineTo(edge.targetNode.x, edge.targetNode.y);
-        ctx.strokeStyle = isHighlight ? '#818cf8' : '#27272a';
-        ctx.lineWidth = isHighlight ? 2 : 1;
+        ctx.strokeStyle = isHighlight ? 'rgba(56, 189, 248, 0.7)' : 'rgba(36, 36, 44, 0.8)';
+        ctx.lineWidth = isHighlight ? 1.8 : 1;
         ctx.stroke();
 
-        // Arrowhead
-        const angle = Math.atan2(edge.targetNode.y - edge.sourceNode.y, edge.targetNode.x - edge.sourceNode.x);
-        const arrowDist = edge.targetNode.radius + 4;
-        const ax = edge.targetNode.x - Math.cos(angle) * arrowDist;
-        const ay = edge.targetNode.y - Math.sin(angle) * arrowDist;
+        // Edge particle animation
+        const px = edge.sourceNode.x + (edge.targetNode.x - edge.sourceNode.x) * ((particleOffset + (edge.sourceNode.x * 0.01)) % 1);
+        const py = edge.sourceNode.y + (edge.targetNode.y - edge.sourceNode.y) * ((particleOffset + (edge.sourceNode.x * 0.01)) % 1);
         ctx.beginPath();
-        ctx.arc(ax, ay, 2.5, 0, 2 * Math.PI);
-        ctx.fillStyle = isHighlight ? '#818cf8' : '#3f3f46';
+        ctx.arc(px, py, 1.2, 0, 2 * Math.PI);
+        ctx.fillStyle = isHighlight ? '#38bdf8' : 'rgba(113, 113, 122, 0.4)';
         ctx.fill();
       }
 
@@ -1491,22 +1492,35 @@
         const isSelected = selectedNode && selectedNode.id === n.id;
         const isHovered = hoveredNode && hoveredNode.id === n.id;
 
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.radius + (isSelected ? 3 : 0), 0, 2 * Math.PI);
-        ctx.fillStyle = n.color;
-        ctx.fill();
-
+        // Outer glow halo for selected/hovered nodes
         if (isSelected || isHovered) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.radius + 8, 0, 2 * Math.PI);
+          ctx.fillStyle = `${n.color}22`;
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.radius + 4, 0, 2 * Math.PI);
+          ctx.strokeStyle = `${n.color}88`;
+          ctx.lineWidth = 1;
           ctx.stroke();
         }
 
+        // Main node circle
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = n.color;
+        ctx.fill();
+
+        ctx.strokeStyle = '#08080a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
         // Label
-        ctx.fillStyle = isSelected ? '#ffffff' : '#d4d4d8';
-        ctx.font = `${isSelected ? '600 ' : ''}11px Inter, sans-serif`;
+        ctx.fillStyle = isSelected ? '#ffffff' : '#a1a1aa';
+        ctx.font = `${isSelected ? '600 ' : '400 '}11px Geist Mono, monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(n.name, n.x, n.y + n.radius + 14);
+        ctx.fillText(n.name, n.x, n.y + n.radius + 13);
       }
 
       ctx.restore();
@@ -1525,7 +1539,7 @@
         
         const inCount = data.inbound_edges.length;
         const outCount = data.outbound_edges.length;
-        document.getElementById('drawerNodeEdges').textContent = `${inCount} callers / inbound, ${outCount} callees / outbound`;
+        document.getElementById('drawerNodeEdges').textContent = `${inCount} in / ${outCount} out`;
 
         document.getElementById('drawerNodeSnippet').textContent = data.snippet || '# (No code body)';
         drawer.classList.add('open');
@@ -1545,18 +1559,16 @@
       if (!prompt) return;
 
       const summary = document.getElementById('simStatusSummary');
-      summary.textContent = 'Simulating 6-stage pipeline...';
+      summary.textContent = 'Simulating...';
 
-      // Reset step highlights
       for (let i = 1; i <= 6; i++) {
         document.getElementById(`step-${i}`).classList.remove('active');
       }
 
-      // Animate progress steps
       document.getElementById('step-1').classList.add('active');
-      await sleep(150);
+      await sleep(120);
       document.getElementById('step-2').classList.add('active');
-      await sleep(150);
+      await sleep(120);
       document.getElementById('step-3').classList.add('active');
 
       try {
@@ -1573,12 +1585,11 @@
         document.getElementById('step-5').classList.add('active');
         document.getElementById('step-6').classList.add('active');
 
-        summary.innerHTML = `<span class="badge ${result.stage_reached === 'cache_hit' ? 'badge-emerald' : 'badge-violet'}">${result.stage_reached}</span> • Tokens: ${result.estimated_tokens} • Tier: ${result.tier || 'cache'} • Scope: ${result.scope_node_count} nodes`;
+        summary.innerHTML = `<span class="badge">${result.stage_reached}</span> • Tokens: ${result.estimated_tokens} • Tier: ${result.tier || 'cache'}`;
 
-        // Refresh overview metrics
         fetchOverview();
       } catch (err) {
-        summary.textContent = `Simulation error: ${err.message}`;
+        summary.textContent = `Error: ${err.message}`;
       }
     });
 
@@ -1594,26 +1605,26 @@
 
         if (!data.overlap_groups.length) {
           container.innerHTML = `
-            <div style="text-align: center; color: var(--text-dim); padding: 30px;">
+            <div style="text-align: center; color: var(--text-dim); padding: 24px;">
               <div>Analyzed ${data.tasks_analyzed} subagent task candidates.</div>
-              <div style="color: var(--accent-emerald); font-weight: 500; margin-top: 6px;">All candidate scopes are disjoint. Safe for 100% parallel execution with zero write conflicts.</div>
+              <div style="color: var(--text-muted); font-size:12px; margin-top: 4px;">All candidate scopes are disjoint. Safe for 100% parallel execution.</div>
             </div>
           `;
           return;
         }
 
         container.innerHTML = data.overlap_groups.map((g, i) => `
-          <div style="background-color: var(--bg-card-subtle); border: 1px solid var(--border-base); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              <span style="font-weight: 600; font-size: 13px;">Overlap Group #${i + 1}</span>
-              <span class="badge ${g.recommendation === 'merge' ? 'badge-amber' : 'badge-sky'}">Recommendation: ${g.recommendation.toUpperCase()}</span>
+          <div style="background-color: var(--bg-card-subtle); border: 1px solid var(--border-base); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-weight: 500; font-size: 12.5px;">Group #${i + 1}</span>
+              <span class="badge">Action: ${g.recommendation.toUpperCase()}</span>
             </div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-              <div><strong style="color: var(--text-main);">Task 1:</strong> ${escapeHtml(g.task_a)}</div>
-              <div><strong style="color: var(--text-main);">Task 2:</strong> ${escapeHtml(g.task_b)}</div>
+            <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px; font-family:var(--font-mono);">
+              <div>Task 1: ${escapeHtml(g.task_a)}</div>
+              <div>Task 2: ${escapeHtml(g.task_b)}</div>
             </div>
-            <div style="font-size: 11.5px; color: var(--text-dim); font-family: var(--font-mono);">
-              Jaccard Overlap: ${(g.overlap_ratio * 100).toFixed(0)}% • Shared Graph Nodes: ${g.shared_nodes_count}
+            <div style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">
+              Overlap: ${(g.overlap_ratio * 100).toFixed(0)}% • Shared Nodes: ${g.shared_nodes_count}
             </div>
           </div>
         `).join('');
@@ -1635,19 +1646,19 @@
         const list = await res.json();
 
         if (!list.length) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">No ledger entries found.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 20px;">No ledger entries found.</td></tr>';
           return;
         }
 
         tbody.innerHTML = list.map(r => `
           <tr>
             <td style="font-family: var(--font-mono); color: var(--text-dim);">#${r.id}</td>
-            <td style="font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted);">${r.timestamp || ''}</td>
-            <td>${getStageBadge(r.stage_reached)}</td>
-            <td style="font-family: var(--font-mono);">${r.module_attribution || 'root'}</td>
+            <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${r.timestamp || ''}</td>
+            <td><span class="badge">${r.stage_reached}</span></td>
+            <td style="font-family: var(--font-mono); font-size: 11.5px;">${r.module_attribution || 'root'}</td>
             <td style="font-family: var(--font-mono);">${(r.estimated_tokens_actual || 0).toLocaleString()}</td>
             <td style="font-family: var(--font-mono); color: var(--text-dim);">${(r.estimated_tokens_naive || 0).toLocaleString()}</td>
-            <td style="color: var(--text-muted); max-width: 380px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.prompt_summary || '')}</td>
+            <td style="color: var(--text-muted); max-width: 360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.prompt_summary || '')}</td>
           </tr>
         `).join('');
       } catch (err) {
