@@ -1,3 +1,10 @@
+account:
+  user_name: "Kaveen Krithik"
+  ide_provider: "Antigravity IDE"
+  account_plan: "Pro Plan"
+  total_token_allowance: 1000000
+  period_label: "Account Allowance"
+
 graph:
   languages: [python, javascript, typescript]
   max_hops: 2                    # default subgraph radius for context scoping

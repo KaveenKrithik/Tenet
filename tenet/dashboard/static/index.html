@@ -750,11 +750,17 @@
           <span class="breadcrumb-active" id="breadcrumbTitle">Overview</span>
         </div>
         <div class="top-actions">
+          <div id="accountPill" style="display: flex; align-items: center; gap: 8px; background: rgba(0, 243, 255, 0.08); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 20px; padding: 4px 12px; font-size: 12px;">
+            <span style="color: var(--accent); font-weight: 600;" id="navIdeProvider">Antigravity IDE</span>
+            <span style="color: var(--text-dim);">·</span>
+            <span style="color: var(--text-muted);" id="navAccountPlan">Pro Plan</span>
+          </div>
           <button class="btn btn-sm" id="btnRefresh">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
             Refresh
           </button>
         </div>
+
       </header>
 
       <div class="content-container">
@@ -808,15 +814,16 @@
 
             <div class="metric-card" id="cardBudget" style="display:none;">
               <div class="metric-top">
-                <span>Budget Remaining</span>
-                <span class="badge">Monthly</span>
+                <span>Tokens Remaining</span>
+                <span class="badge" id="valAccountBadge">Account Allowance</span>
               </div>
               <div class="metric-value" id="valBudgetRemaining">—</div>
               <div class="metric-foot">
-                <span>of <span id="valBudgetTotal">0</span> · <span id="valBudgetPct">0%</span> left</span>
+                <span>of <span id="valBudgetTotal">0</span> allowance · <span id="valBudgetPct">0%</span> left</span>
               </div>
             </div>
           </div>
+
 
           <!-- Spend by Module & Anomalies Grid -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
@@ -1156,22 +1163,28 @@
           document.getElementById('valActualTokens').textContent = (t.tokens_actual_total || 0).toLocaleString();
           document.getElementById('valNaiveTokens').textContent = (t.tokens_naive_total || 0).toLocaleString();
 
-          // Budget Remaining card (only shown when a budget is configured)
+          // Account & Budget info
+          if (t.account) {
+            document.getElementById('navIdeProvider').textContent = t.account.ide_provider || 'IDE';
+            document.getElementById('navAccountPlan').textContent = t.account.account_plan || 'Account';
+            document.getElementById('valAccountBadge').textContent = t.account.period_label || t.account.account_plan || 'Account Allowance';
+          }
+
           if (t.tokens_remaining !== null && t.tokens_remaining !== undefined) {
             const card = document.getElementById('cardBudget');
             const remainEl = document.getElementById('valBudgetRemaining');
             const totalEl  = document.getElementById('valBudgetTotal');
             const pctEl    = document.getElementById('valBudgetPct');
             card.style.display = '';
-            const pct = t.monthly_token_budget > 0
-              ? Math.max(0, (t.tokens_remaining / t.monthly_token_budget) * 100)
-              : 100;
+            const allowance = (t.account && t.account.total_allowance) || t.monthly_token_budget || 0;
+            const pct = allowance > 0 ? Math.max(0, (t.tokens_remaining / allowance) * 100) : 100;
             remainEl.textContent = t.tokens_remaining.toLocaleString();
             remainEl.style.color = pct > 30 ? 'var(--accent)' : pct > 10 ? '#f5a623' : '#e74c3c';
-            totalEl.textContent  = (t.monthly_token_budget || 0).toLocaleString();
+            totalEl.textContent  = allowance.toLocaleString();
             pctEl.textContent    = `${pct.toFixed(1)}%`;
           }
         }
+
 
         if (spendRes.ok) {
           const spend = await spendRes.json();

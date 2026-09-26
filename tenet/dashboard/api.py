@@ -63,12 +63,14 @@ def _get_graph() -> GraphStore:
 
 @app.get("/api/totals", tags=["analytics"])
 async def get_totals() -> dict[str, Any]:
-    """Return aggregate token savings, cache hit rate, request counts, and budget info."""
+    """Return aggregate token savings, cache hit rate, request counts, and account/IDE budget info."""
     ledger = _get_ledger()
     totals = ledger.get_totals()
     cfg = load_config()
-    budget = cfg.router.monthly_token_budget
-    tokens_remaining = max(0, budget - totals.tokens_actual_total) if budget > 0 else None
+
+    allowance = cfg.account.total_token_allowance or cfg.router.monthly_token_budget
+    tokens_remaining = max(0, allowance - totals.tokens_actual_total) if allowance > 0 else None
+
     return {
         "total_requests": totals.total_requests,
         "cache_hits": totals.cache_hits,
@@ -78,9 +80,17 @@ async def get_totals() -> dict[str, Any]:
         "tokens_actual_total": totals.tokens_actual_total,
         "tokens_saved": totals.tokens_saved,
         "cache_hit_rate": round(totals.cache_hit_rate, 4),
-        "monthly_token_budget": budget,
-        "tokens_remaining": tokens_remaining,  # None when budget == 0 (unlimited)
+        "monthly_token_budget": allowance,
+        "tokens_remaining": tokens_remaining,
+        "account": {
+            "user_name": cfg.account.user_name,
+            "ide_provider": cfg.account.ide_provider,
+            "account_plan": cfg.account.account_plan,
+            "total_allowance": allowance,
+            "period_label": cfg.account.period_label,
+        },
     }
+
 
 
 @app.get("/api/spend-by-module", tags=["analytics"])

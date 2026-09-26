@@ -50,7 +50,15 @@ class RouterConfig(BaseModel):
     tiers: RouterTiersConfig = RouterTiersConfig()
     cost_confirmation_threshold_tokens: int = 20000
     tokens_per_node_estimate: int = 800
-    monthly_token_budget: int = 1_000_000  # total budget; 0 = unlimited
+    monthly_token_budget: int = 1_000_000  # legacy alias; 0 = unlimited
+
+
+class AccountConfig(BaseModel):
+    user_name: str = "Developer"
+    ide_provider: str = "Antigravity IDE"  # e.g., Antigravity IDE, Cursor, VS Code, JetBrains
+    account_plan: str = "Pro Plan"        # e.g., Pro Plan, Free Tier, Custom API Pool
+    total_token_allowance: int = 1_000_000 # Total token quota allocated to user account/IDE
+    period_label: str = "Account Allowance" # Badge label
 
 
 class LedgerConfig(BaseModel):
@@ -68,12 +76,14 @@ class DashboardConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 class TenetConfig(BaseModel):
+    account: AccountConfig = Field(default_factory=AccountConfig)
     graph: GraphConfig = Field(default_factory=GraphConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     triage: TriageConfig = Field(default_factory=TriageConfig)
     router: RouterConfig = Field(default_factory=RouterConfig)
     ledger: LedgerConfig = Field(default_factory=LedgerConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
+
 
     @model_validator(mode="after")
     def ensure_data_dirs(self) -> "TenetConfig":

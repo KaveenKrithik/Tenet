@@ -316,8 +316,21 @@ def cmd_status() -> None:
     saved_pct = (totals.tokens_saved / naive) * 100 if naive > 0 else 0
     dollars = (totals.tokens_saved / 1000) * 0.015
 
+    allowance = cfg.account.total_token_allowance or cfg.router.monthly_token_budget
+    tokens_remaining = max(0, allowance - totals.tokens_actual_total) if allowance > 0 else 0
+    rem_pct = (tokens_remaining / allowance * 100) if allowance > 0 else 100
+
+    console.print(Panel(
+        f"[bold white]User:[/] {cfg.account.user_name}  ·  [bold cyan]{cfg.account.ide_provider}[/] ([dim]{cfg.account.account_plan}[/])\n"
+        f"[bold white]Quota Allowance:[/] {allowance:,} tokens  ·  [bold green]{tokens_remaining:,}[/] remaining ({rem_pct:.1f}% left)",
+        title="[bold cyan]Personalized IDE Account Quota[/]",
+        border_style="cyan",
+        padding=(0, 2),
+    ))
+
     # ── 3-card grid ──────────────────────────────────────────────────────────
     grid = Table.grid(expand=True)
+
     grid.add_column(ratio=1)
     grid.add_column(ratio=1)
     grid.add_column(ratio=1)
