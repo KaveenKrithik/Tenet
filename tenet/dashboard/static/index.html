@@ -805,6 +805,17 @@
                 <span>vs <span id="valNaiveTokens">0</span> unpruned</span>
               </div>
             </div>
+
+            <div class="metric-card" id="cardBudget" style="display:none;">
+              <div class="metric-top">
+                <span>Budget Remaining</span>
+                <span class="badge">Monthly</span>
+              </div>
+              <div class="metric-value" id="valBudgetRemaining">—</div>
+              <div class="metric-foot">
+                <span>of <span id="valBudgetTotal">0</span> · <span id="valBudgetPct">0%</span> left</span>
+              </div>
+            </div>
           </div>
 
           <!-- Spend by Module & Anomalies Grid -->
@@ -1144,6 +1155,22 @@
           document.getElementById('valEscalations').textContent = `${t.escalations || 0} escalated`;
           document.getElementById('valActualTokens').textContent = (t.tokens_actual_total || 0).toLocaleString();
           document.getElementById('valNaiveTokens').textContent = (t.tokens_naive_total || 0).toLocaleString();
+
+          // Budget Remaining card (only shown when a budget is configured)
+          if (t.tokens_remaining !== null && t.tokens_remaining !== undefined) {
+            const card = document.getElementById('cardBudget');
+            const remainEl = document.getElementById('valBudgetRemaining');
+            const totalEl  = document.getElementById('valBudgetTotal');
+            const pctEl    = document.getElementById('valBudgetPct');
+            card.style.display = '';
+            const pct = t.monthly_token_budget > 0
+              ? Math.max(0, (t.tokens_remaining / t.monthly_token_budget) * 100)
+              : 100;
+            remainEl.textContent = t.tokens_remaining.toLocaleString();
+            remainEl.style.color = pct > 30 ? 'var(--accent)' : pct > 10 ? '#f5a623' : '#e74c3c';
+            totalEl.textContent  = (t.monthly_token_budget || 0).toLocaleString();
+            pctEl.textContent    = `${pct.toFixed(1)}%`;
+          }
         }
 
         if (spendRes.ok) {

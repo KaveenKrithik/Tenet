@@ -1,19 +1,34 @@
 """
-cli.py — Tenet command-line interface (typer).
+cli.py — Tenet command-line interface (typer + rich).
 
 All business logic lives in the pipeline and sub-modules.
-This file is a thin adapter layer only.
+This file is a polished, cinematic adapter layer.
 """
 from __future__ import annotations
 
 import logging
-import sys
+import platform
+import random
+import shutil
+import subprocess
+import time
+import warnings
+import webbrowser
 from pathlib import Path
 from typing import Optional
 
 import typer
+from rich import box
+from rich.align import Align
 from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.syntax import Syntax
 from rich.table import Table
+from rich.text import Text
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 app = typer.Typer(
     name="tenet",
@@ -24,10 +39,49 @@ app = typer.Typer(
 console = Console()
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
+
+# ---------------------------------------------------------------------------
+# Cinematic constants
+# ---------------------------------------------------------------------------
+
+BANNER = r"""[bold cyan]
+  ████████╗███████╗███╗   ██╗███████╗████████╗
+  ╚══██╔══╝██╔════╝████╗  ██║██╔════╝╚══██╔══╝
+     ██║   █████╗  ██╔██╗ ██║█████╗     ██║   
+     ██║   ██╔══╝  ██║╚██╗██║██╔══╝     ██║   
+     ██║   ███████╗██║ ╚████║███████╗   ██║   
+     ╚═╝   ╚══════╝╚═╝  ╚═══╝╚══════╝   ╚═╝   
+[/bold cyan][dim cyan]     LOCAL-FIRST TOKEN EFFICIENCY LAYER[/dim cyan]
+"""
+
+TENET_QUOTES = [
+    '"Don\'t try to understand it. Feel it." — Protagonist',
+    '"What\'s happened, happened. What hasn\'t left your machine stays free."',
+    '"Ignorance is our armour." — Protagonist',
+    '"We live in a twilight world." — Protagonist',
+    '"There are no coincidences." — Neil',
+    '"Inversion. Not time-travel. Causality in reverse."',
+    '"Doesn\'t take you long to get your bearings, does it?" — Neil',
+    '"The algorithm is all that matters. Protect it." — Protagonist',
+    '"From the future, with love." — Neil',
+]
+
+
+def _quote() -> str:
+    return random.choice(TENET_QUOTES)
+
+
+def _savings_bar(pct: float, width: int = 30) -> str:
+    """Return a coloured ASCII progress bar for savings %."""
+    filled = int((pct / 100) * width)
+    empty = width - filled
+    color = "bold green" if pct >= 75 else "bold yellow" if pct >= 40 else "bold red"
+    bar = f"[{color}]{'█' * filled}[/][dim]{'░' * empty}[/]"
+    return bar
 
 
 # ---------------------------------------------------------------------------
@@ -38,11 +92,7 @@ logging.basicConfig(
 def cmd_init(
     path: str = typer.Argument(".", help="Root directory of the codebase to index"),
 ) -> None:
-    """Build the initial knowledge graph for a codebase.
-
-    Walks all Python, JavaScript, and TypeScript files under PATH, parses
-    their ASTs, and stores nodes + edges in the configured SQLite database.
-    """
+    """Build the knowledge graph — parse all AST symbols into SQLite."""
     from tenet.config import load_config
     from tenet.graph.builder import build_full_graph
     from tenet.graph.store import GraphStore
@@ -50,11 +100,35 @@ def cmd_init(
     cfg = load_config()
     store = GraphStore(cfg.graph.db_path)
 
-    console.print(f"[bold]Tenet — building graph for:[/] {path}")
-    build_full_graph(path, store)
+    # Only place where the banner appears
+    console.print(Align.center(BANNER))
+    console.print(Align.center(f"[dim italic]{_quote()}[/]\n"))
+
+    with console.status(
+        f"[cyan]Parsing AST & building knowledge graph for:[/] [bold white]{path}[/]",
+        spinner="aesthetic",
+    ):
+        start = time.time()
+        build_full_graph(path, store)
+        elapsed = time.time() - start
 
     nodes = store.get_all_nodes()
-    console.print(f"[green]Done.[/] Indexed [bold]{len(nodes)}[/] nodes → {cfg.graph.db_path}")
+    node_ids = [n["id"] for n in nodes]
+    edges = store.get_edges_for_nodes(node_ids)
+
+    t = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+    t.add_row("[dim]Nodes indexed:[/]", f"[bold cyan]{len(nodes):,}[/]")
+    t.add_row("[dim]Edges indexed:[/]", f"[bold cyan]{len(edges):,}[/]")
+    t.add_row("[dim]Database:[/]",      f"[white]{cfg.graph.db_path}[/]")
+    t.add_row("[dim]Build time:[/]",    f"[bold green]{elapsed:.2f}s[/]")
+
+    console.print(Panel(
+        t,
+        title="[bold green]✓ Knowledge Graph Ready[/]",
+        subtitle="[dim italic]\"What's happened, happened.\"[/]",
+        border_style="green",
+        padding=(1, 2),
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -66,11 +140,7 @@ def cmd_watch(
     path: str = typer.Argument(".", help="Root directory to watch for changes"),
     interval: int = typer.Option(5, help="Polling interval in seconds"),
 ) -> None:
-    """Start the file watcher and apply incremental graph updates on change.
-
-    Uses watchdog if installed, otherwise falls back to mtime polling.
-    Press Ctrl-C to stop.
-    """
+    """Live-watch the codebase and update the graph on every save."""
     from tenet.config import load_config
     from tenet.graph.builder import watch
     from tenet.graph.store import GraphStore
@@ -78,7 +148,14 @@ def cmd_watch(
     cfg = load_config()
     store = GraphStore(cfg.graph.db_path)
 
-    console.print(f"[bold]Watching:[/] {path} (interval={interval}s) — Ctrl-C to stop")
+    console.print(Panel(
+        f"[bold white]Path:[/] [cyan]{path}[/]  [dim]·[/]  [bold white]Interval:[/] [cyan]{interval}s[/]\n"
+        f"[dim]Every file save re-parses AST and updates the knowledge graph.[/]\n\n"
+        f"[dim yellow]Ctrl+C to stop.[/]",
+        title="[bold cyan]● Watching[/]",
+        border_style="cyan",
+        padding=(1, 2),
+    ))
     watch(path, store, interval_seconds=interval)
 
 
@@ -88,56 +165,70 @@ def cmd_watch(
 
 @app.command("query")
 def cmd_query(
-    prompt: str = typer.Argument(..., help='Coding prompt (e.g. "Add error handling to auth.py")'),
-    files: str = typer.Option("", "--files", "-f", help="Comma-separated list of touched files"),
+    prompt: str = typer.Argument(..., help='Prompt to run through the reduction pipeline'),
+    files: str = typer.Option("", "--files", "-f", help="Comma-separated context files"),
 ) -> None:
-    """Run a prompt through the full 6-stage pipeline.
-
-    On a cache hit, returns the cached response immediately.
-    On local success, prints the Ollama-generated response.
-    On escalation, prints the compressed context payload for the developer
-    to hand off to a paid backend.
-    """
+    """Run a prompt through all 6 reduction stages (cache → local → escalate)."""
     from tenet.config import load_config
     from tenet.pipeline import process_request
 
     cfg = load_config()
     touched = [f.strip() for f in files.split(",") if f.strip()] if files else []
 
-    console.print(f"\n[bold]Processing:[/] {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
+    header = f"[bold white]{prompt}[/]"
     if touched:
-        console.print(f"[dim]Files:[/] {', '.join(touched)}")
+        header += f"\n[dim]Files: {', '.join(touched)}[/]"
+
+    console.print(Panel(header, title="[cyan]⬡ Pipeline[/]", border_style="cyan", padding=(0, 2)))
 
     def confirm(est_tokens: int, tier: str) -> bool:
-        return typer.confirm(
-            f"\nEstimated {est_tokens:,} tokens (tier: {tier}). Proceed with escalation?"
+        return typer.confirm(f"  Estimated {est_tokens:,} tokens ({tier} tier). Escalate?")
+
+    with console.status("[cyan]Running 6-stage reduction...[/]", spinner="arc"):
+        result = process_request(
+            prompt=prompt,
+            touched_files=touched,
+            config=cfg,
+            confirmation_callback=confirm,
         )
 
-    result = process_request(
-        prompt=prompt,
-        touched_files=touched,
-        config=cfg,
-        confirmation_callback=confirm,
-    )
-
-    # Display result
-    stage_colors = {
-        "cache_hit": "green",
-        "local_success": "blue",
-        "escalated": "yellow",
+    stage_map = {
+        "cache_hit":     ("green",  "⚡ CACHE HIT",          "0 tokens consumed  ·  $0.00 cost"),
+        "local_success": ("blue",   "🤖 LOCAL SUCCESS",       "Resolved by local Ollama + AST verified"),
+        "escalated":     ("yellow", "▲  CONTEXT ESCALATED",  "Compressed stub context → upstream model"),
     }
-    color = stage_colors.get(result.stage_reached, "white")
-    console.print(f"\n[bold {color}]Stage:[/] {result.stage_reached}")
+    color, title_str, sub = stage_map.get(result.stage_reached, ("white", result.stage_reached.upper(), ""))
 
     if result.response:
-        console.print(f"\n[bold]Response:[/]\n{result.response}")
+        body: object = Markdown(result.response)
     else:
-        console.print(f"\n[dim]Escalated — compressed payload ready ({len(result.compressed_payload.scope_node_ids)} nodes in scope)[/]")
+        scope_n = len(result.compressed_payload.scope_node_ids) if result.compressed_payload else 0
+        naive = result.scope_node_count * cfg.router.tokens_per_node_estimate
+        saved = naive - result.estimated_tokens
+        saved_pct = (saved / naive * 100) if naive else 0
+        body = Text(
+            f"{scope_n} AST nodes in scope  ·  {result.estimated_tokens:,} tokens (was {naive:,} naive)\n"
+            f"{_savings_bar(saved_pct)} {saved_pct:.0f}% compressed",
+        )
 
-    if result.tier:
-        console.print(f"[dim]Tier:[/] {result.tier} | [dim]Est. tokens:[/] {result.estimated_tokens:,}")
+    console.print(Panel(
+        body,
+        title=f"[bold {color}]{title_str}[/]",
+        subtitle=f"[dim]{sub}[/]",
+        border_style=color,
+        padding=(1, 2),
+    ))
 
-    console.print(f"[dim]Ledger ID:[/] #{result.ledger_id}")
+    # Compact telemetry footer
+    t = Table(box=None, show_header=False, padding=(0, 2))
+    t.add_row(
+        f"[dim]tier[/] [bold]{result.tier or '—'}[/]",
+        f"[dim]nodes[/] [bold]{result.scope_node_count}[/]",
+        f"[dim]tokens[/] [bold]{result.estimated_tokens:,}[/]",
+        f"[dim]ledger[/] [bold cyan]#{result.ledger_id}[/]",
+    )
+    console.print(t)
+    console.print(f"  [dim italic]{_quote()}[/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -146,55 +237,57 @@ def cmd_query(
 
 @app.command("optimize")
 def cmd_optimize(
-    prompt: str = typer.Argument(..., help='Rough coding prompt to optimize'),
-    copy: bool = typer.Option(True, "--copy/--no-copy", help="Copy the result to clipboard"),
+    prompt: str = typer.Argument(..., help="Rough prompt to sharpen"),
+    copy: bool = typer.Option(True, "--copy/--no-copy", help="Copy result to clipboard"),
 ) -> None:
-    """Optimize a prompt and optionally copy it to your clipboard."""
-    import platform
-    import shutil
-    import subprocess
+    """Rewrite a vague prompt into a precise, rule-based instruction."""
     from tenet.config import load_config
     from tenet.triage.prompt_optimizer import optimize_prompt
 
     cfg = load_config()
 
-    console.print("[bold]Optimizing prompt...[/]")
-    optimized = optimize_prompt(prompt, cfg)
+    with console.status("[cyan]Optimizing via local LLM...[/]", spinner="dots"):
+        optimized = optimize_prompt(prompt, cfg)
 
-    console.print(f"\n[bold green]Optimized Prompt:[/]\n{optimized}\n")
+    t = Table(box=box.ROUNDED, show_header=True, padding=(0, 1))
+    t.add_column("[dim]Original[/]", ratio=1)
+    t.add_column("[bold green]Optimized[/]", ratio=1)
+    t.add_row(prompt, optimized)
+
+    console.print(Panel(
+        t,
+        title="[bold green]⚡ Stage 0 — Prompt Optimizer[/]",
+        subtitle=f"[dim]{len(prompt)} → {len(optimized)} chars[/]",
+        border_style="green",
+    ))
 
     if copy:
-        copied = False
-        sys_name = platform.system()
-        try:
-            if sys_name == "Darwin" and shutil.which("pbcopy"):
-                proc = subprocess.Popen(["pbcopy"], env={"LANG": "en_US.UTF-8"}, stdin=subprocess.PIPE)
-                proc.communicate(optimized.encode("utf-8"))
-                copied = proc.returncode == 0
-            elif sys_name == "Windows" and shutil.which("clip"):
-                proc = subprocess.Popen(["clip"], stdin=subprocess.PIPE)
-                proc.communicate(optimized.encode("utf-8"))
-                copied = proc.returncode == 0
-            elif sys_name == "Linux":
-                if shutil.which("wl-copy"):
-                    proc = subprocess.Popen(["wl-copy"], stdin=subprocess.PIPE)
-                    proc.communicate(optimized.encode("utf-8"))
-                    copied = proc.returncode == 0
-                elif shutil.which("xclip"):
-                    proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
-                    proc.communicate(optimized.encode("utf-8"))
-                    copied = proc.returncode == 0
-                elif shutil.which("xsel"):
-                    proc = subprocess.Popen(["xsel", "-b", "-i"], stdin=subprocess.PIPE)
-                    proc.communicate(optimized.encode("utf-8"))
-                    copied = proc.returncode == 0
+        _copy_to_clipboard(optimized)
 
-            if copied:
-                console.print("[dim]✓ Copied to clipboard![/]")
-            else:
-                console.print("[dim](Clipboard tool not found or failed; text printed above)[/]")
-        except Exception as exc:
-            console.print(f"[yellow]Could not copy to clipboard: {exc}[/]")
+
+def _copy_to_clipboard(text: str) -> None:
+    sys_name = platform.system()
+    try:
+        copied = False
+        if sys_name == "Darwin" and shutil.which("pbcopy"):
+            p = subprocess.Popen(["pbcopy"], env={"LANG": "en_US.UTF-8"}, stdin=subprocess.PIPE)
+            p.communicate(text.encode("utf-8"))
+            copied = p.returncode == 0
+        elif sys_name == "Windows" and shutil.which("clip"):
+            p = subprocess.Popen(["clip"], stdin=subprocess.PIPE)
+            p.communicate(text.encode("utf-8"))
+            copied = p.returncode == 0
+        elif sys_name == "Linux":
+            for cmd, extra in [("wl-copy", []), ("xclip", ["-selection", "clipboard"]), ("xsel", ["-b", "-i"])]:
+                if shutil.which(cmd):
+                    p = subprocess.Popen([cmd] + extra, stdin=subprocess.PIPE)
+                    p.communicate(text.encode("utf-8"))
+                    copied = p.returncode == 0
+                    break
+        if copied:
+            console.print("  [dim green]✓ Copied to clipboard[/]")
+    except Exception as exc:
+        console.print(f"  [yellow]Clipboard unavailable: {exc}[/]")
 
 
 # ---------------------------------------------------------------------------
@@ -203,42 +296,79 @@ def cmd_optimize(
 
 @app.command("status")
 def cmd_status() -> None:
-    """Print aggregate totals from the request ledger."""
+    """Show pipeline performance metrics, savings gauge, and module spend."""
     from tenet.config import load_config
     from tenet.ledger.store import LedgerStore
 
     cfg = load_config()
 
     if not Path(cfg.ledger.db_path).exists():
-        console.print("[yellow]No ledger found yet. Run `tenet query` first.[/]")
+        console.print(Panel(
+            "[yellow]No ledger data yet.[/]\nRun [bold cyan]tenet query[/] or type [bold cyan]/tenet[/] in chat.",
+            border_style="yellow",
+        ))
         raise typer.Exit()
 
     ledger = LedgerStore(cfg.ledger.db_path)
     totals = ledger.get_totals()
 
-    table = Table(title="Tenet — Pipeline Status", show_header=True)
-    table.add_column("Metric", style="dim")
-    table.add_column("Value", style="bold")
+    naive = totals.tokens_naive_total or 1
+    saved_pct = (totals.tokens_saved / naive) * 100 if naive > 0 else 0
+    dollars = (totals.tokens_saved / 1000) * 0.015
 
-    table.add_row("Total Requests",   str(totals.total_requests))
-    table.add_row("Cache Hits",        f"{totals.cache_hits} ({totals.cache_hit_rate:.1%})")
-    table.add_row("Local Successes",   str(totals.local_successes))
-    table.add_row("Escalated",         str(totals.escalations))
-    table.add_row("Tokens (naive)",    f"{totals.tokens_naive_total:,}")
-    table.add_row("Tokens (actual)",   f"{totals.tokens_actual_total:,}")
-    table.add_row("Tokens Saved",      f"[bold green]{totals.tokens_saved:,}[/]")
+    # ── 3-card grid ──────────────────────────────────────────────────────────
+    grid = Table.grid(expand=True)
+    grid.add_column(ratio=1)
+    grid.add_column(ratio=1)
+    grid.add_column(ratio=1)
+    grid.add_row(
+        Panel(
+            f"[bold white]{totals.total_requests}[/]\n[dim]{totals.escalations} escalated · {totals.cache_hits} cached[/]",
+            title="[cyan]REQUESTS[/]", border_style="cyan",
+        ),
+        Panel(
+            f"[bold green]{totals.tokens_saved:,}[/]\n[dim]≈ ${dollars:.3f} saved[/]",
+            title="[green]TOKENS SAVED[/]", border_style="green",
+        ),
+        Panel(
+            f"[bold cyan]{totals.cache_hit_rate:.1%}[/]\n[dim]semantic cache hit rate[/]",
+            title="[blue]CACHE RATE[/]", border_style="blue",
+        ),
+    )
+    console.print(grid)
 
-    console.print(table)
+    # ── Savings bar ───────────────────────────────────────────────────────────
+    bar_color = "bold green" if saved_pct >= 75 else "bold yellow" if saved_pct >= 40 else "bold red"
+    filled = int((saved_pct / 100) * 40)
+    bar = f"[{bar_color}]{'█' * filled}[/][dim]{'░' * (40 - filled)}[/]  [{bar_color}]{saved_pct:.1f}%[/] compressed"
+    console.print(Panel(bar, title="[bold]Compression Efficiency[/]", border_style="dim"))
 
-    # Spend by module
+    # ── Stage breakdown ───────────────────────────────────────────────────────
+    t = Table(box=box.ROUNDED, title="Stage Breakdown", show_header=True)
+    t.add_column("Stage / Metric",  style="dim")
+    t.add_column("Value",           style="bold",      justify="right")
+    t.add_column("Impact",          style="dim green",  justify="right")
+    t.add_row("Stage 3 — Cache Hits",      str(totals.cache_hits),                  f"{totals.cache_hit_rate:.1%}  ($0.00)")
+    t.add_row("Stage 4 — Local Successes", str(totals.local_successes),             "Free Ollama")
+    t.add_row("Stage 5 — Escalations",     str(totals.escalations),                 "AST-scoped stub")
+    t.add_row("Naive (no pipeline)",        f"{totals.tokens_naive_total:,}",        "Baseline")
+    t.add_row("Actual transmitted",         f"{totals.tokens_actual_total:,}",       "Compressed")
+    t.add_row("Total reduction",           f"[bold green]{totals.tokens_saved:,}[/]", f"[bold green]{saved_pct:.1f}% SAVED[/]")
+    console.print(t)
+
+    # ── Module spend ──────────────────────────────────────────────────────────
     spend = ledger.get_spend_by_module()
     if spend:
-        mod_table = Table(title="Spend by Module", show_header=True)
-        mod_table.add_column("Module", style="dim")
-        mod_table.add_column("Tokens", style="bold")
+        mt = Table(box=box.SIMPLE, title="Spend by Module", show_header=True)
+        mt.add_column("Module", style="cyan")
+        mt.add_column("Tokens", style="bold",  justify="right")
+        mt.add_column("Share",  style="dim",   justify="right")
+        total_spend = sum(spend.values()) or 1
         for mod, tok in sorted(spend.items(), key=lambda x: -x[1]):
-            mod_table.add_row(mod, f"{tok:,}")
-        console.print(mod_table)
+            mt.add_row(mod, f"{tok:,}", f"{(tok/total_spend)*100:.1f}%")
+        console.print(mt)
+
+    console.print(f"\n  [dim italic]{_quote()}[/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -246,82 +376,91 @@ def cmd_status() -> None:
 # ---------------------------------------------------------------------------
 
 @app.command("dashboard")
-def cmd_dashboard() -> None:
-    """Launch the FastAPI analytics dashboard."""
+def cmd_dashboard(
+    open_browser: bool = typer.Option(False, "--open", "-o", help="Open browser automatically"),
+) -> None:
+    """Launch the FastAPI visualizer + analytics dashboard."""
     import uvicorn
-
     from tenet.config import load_config
     from tenet.dashboard.api import app as dash_app
 
     cfg = load_config()
-    host = cfg.dashboard.host
-    port = cfg.dashboard.port
+    url = f"http://{cfg.dashboard.host}:{cfg.dashboard.port}"
 
-    console.print(f"[bold]Dashboard:[/] http://{host}:{port}")
-    uvicorn.run(dash_app, host=host, port=port, log_level="warning")
+    console.print(Panel(
+        f"[bold cyan]{url}[/]\n"
+        f"[dim]Graph Visualizer  ·  Multi-Agent Planner  ·  Request Ledger[/]\n\n"
+        f"[dim yellow]Ctrl+C to stop[/]",
+        title="[bold green]● Tenet Dashboard[/]",
+        border_style="green",
+        padding=(1, 2),
+    ))
+
+    if open_browser:
+        webbrowser.open(url)
+
+    uvicorn.run(dash_app, host=cfg.dashboard.host, port=cfg.dashboard.port, log_level="warning")
 
 
 # ---------------------------------------------------------------------------
-# tenet config show
+# tenet config
 # ---------------------------------------------------------------------------
 
 @app.command("config")
 def cmd_config(
     show: bool = typer.Option(True, "--show", is_flag=True, help="Print resolved configuration"),
 ) -> None:
-    """Print the resolved configuration."""
-    import json
-
+    """Print the resolved YAML configuration."""
     from tenet.config import load_config
-
     cfg = load_config()
-    console.print_json(cfg.model_dump_json(indent=2))
+    console.print(Panel(
+        Syntax(cfg.model_dump_json(indent=2), "json", theme="monokai"),
+        title="[cyan]Configuration[/]",
+        border_style="cyan",
+    ))
 
 
 # ---------------------------------------------------------------------------
-# tenet sync export / import (Stage 7 scaffold)
+# tenet sync
 # ---------------------------------------------------------------------------
 
-sync_app = typer.Typer(help="Team snapshot import/export (Stage 7 scaffold).")
+sync_app = typer.Typer(help="Export / import team graph snapshots.")
 app.add_typer(sync_app, name="sync")
 
 
 @sync_app.command("export")
 def cmd_sync_export(
-    path: str = typer.Argument("team_snapshot.sqlite", help="Destination snapshot path"),
-    no_cache: bool = typer.Option(False, "--no-cache", help="Exclude cache entries from snapshot"),
+    path: str = typer.Argument("team_snapshot.sqlite", help="Destination path"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Exclude cache entries"),
 ) -> None:
-    """Export graph + cache to a portable SQLite snapshot."""
+    """Export graph + cache to a portable SQLite bundle."""
     from tenet.config import load_config
     from tenet.team_sync import export_snapshot
-
     cfg = load_config()
-    export_snapshot(
-        path=path,
-        graph_db_path=cfg.graph.db_path,
-        cache_db_path=cfg.cache.db_path,
-        include_cache=not no_cache,
-    )
-    console.print(f"[green]✓ Snapshot exported to {path}[/]")
+    export_snapshot(path=path, graph_db_path=cfg.graph.db_path,
+                    cache_db_path=cfg.cache.db_path, include_cache=not no_cache)
+    console.print(Panel(
+        f"[bold green]✓[/] Exported → [white]{path}[/]",
+        border_style="green",
+    ))
 
 
 @sync_app.command("import")
 def cmd_sync_import(
-    path: str = typer.Argument("team_snapshot.sqlite", help="Path to the snapshot file"),
+    path: str = typer.Argument("team_snapshot.sqlite", help="Snapshot path"),
 ) -> None:
-    """Merge a team snapshot into the local graph + cache databases."""
+    """Merge a team snapshot into local graph + cache databases."""
     from tenet.config import load_config
     from tenet.team_sync import import_snapshot
-
     cfg = load_config()
-    counts = import_snapshot(
-        path=path,
-        graph_db_path=cfg.graph.db_path,
-        cache_db_path=cfg.cache.db_path,
-    )
-    console.print("[green]✓ Snapshot imported:[/]")
-    for table, count in counts.items():
-        console.print(f"  {table}: {count} rows merged")
+    counts = import_snapshot(path=path, graph_db_path=cfg.graph.db_path,
+                              cache_db_path=cfg.cache.db_path)
+    t = Table(box=box.SIMPLE, show_header=True)
+    t.add_column("Table", style="cyan")
+    t.add_column("Rows", style="bold green", justify="right")
+    for tbl, count in counts.items():
+        t.add_row(tbl, str(count))
+    console.print(Panel(t, title="[bold green]✓ Snapshot Imported[/]", border_style="green"))
 
 
 # ---------------------------------------------------------------------------

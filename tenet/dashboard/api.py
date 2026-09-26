@@ -63,9 +63,12 @@ def _get_graph() -> GraphStore:
 
 @app.get("/api/totals", tags=["analytics"])
 async def get_totals() -> dict[str, Any]:
-    """Return aggregate token savings, cache hit rate, and request counts."""
+    """Return aggregate token savings, cache hit rate, request counts, and budget info."""
     ledger = _get_ledger()
     totals = ledger.get_totals()
+    cfg = load_config()
+    budget = cfg.router.monthly_token_budget
+    tokens_remaining = max(0, budget - totals.tokens_actual_total) if budget > 0 else None
     return {
         "total_requests": totals.total_requests,
         "cache_hits": totals.cache_hits,
@@ -75,6 +78,8 @@ async def get_totals() -> dict[str, Any]:
         "tokens_actual_total": totals.tokens_actual_total,
         "tokens_saved": totals.tokens_saved,
         "cache_hit_rate": round(totals.cache_hit_rate, 4),
+        "monthly_token_budget": budget,
+        "tokens_remaining": tokens_remaining,  # None when budget == 0 (unlimited)
     }
 
 

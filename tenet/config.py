@@ -50,6 +50,7 @@ class RouterConfig(BaseModel):
     tiers: RouterTiersConfig = RouterTiersConfig()
     cost_confirmation_threshold_tokens: int = 20000
     tokens_per_node_estimate: int = 800
+    monthly_token_budget: int = 1_000_000  # total budget; 0 = unlimited
 
 
 class LedgerConfig(BaseModel):
