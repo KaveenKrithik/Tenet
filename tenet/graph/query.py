@@ -25,7 +25,7 @@ class Subgraph:
 
     @property
     def node_ids(self) -> list[str]:
-        return [n["id"] for n in self.nodes]
+        return [n.get("id", "") for n in self.nodes if isinstance(n, dict) and n.get("id")]
 
 
 def _build_nx_graph(store: GraphStore) -> nx.DiGraph:
@@ -56,9 +56,13 @@ def get_subgraph(node_id: str, hops: int, store: GraphStore) -> Subgraph:
     reachable = nx.single_source_shortest_path_length(G_undirected, node_id, cutoff=hops)
     reachable_ids = set(reachable.keys())
 
-    nodes_in_scope = [
-        dict(G.nodes[nid]) for nid in reachable_ids if nid in G.nodes
-    ]
+    nodes_in_scope = []
+    for nid in reachable_ids:
+        if nid in G.nodes:
+            d = dict(G.nodes[nid])
+            d.setdefault("id", nid)
+            nodes_in_scope.append(d)
+
     edges_in_scope = [
         {"source_id": u, "target_id": v, "edge_type": data.get("edge_type", "")}
         for u, v, data in G.edges(data=True)
