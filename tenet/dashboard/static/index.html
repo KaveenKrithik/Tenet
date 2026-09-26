@@ -1467,24 +1467,65 @@
       ctx.translate(panX, panY);
       ctx.scale(zoom, zoom);
 
-      // Render edges
+      // Render edges with futuristic glow and high visibility
       for (const edge of edgesState) {
         const isHighlight = selectedNode && (edge.source_id === selectedNode.id || edge.target_id === selectedNode.id);
+        const s = edge.sourceNode;
+        const t = edge.targetNode;
         
+        // Dynamic cyber-gradient between source and target node colors
+        const grad = ctx.createLinearGradient(s.x, s.y, t.x, t.y);
+        if (isHighlight) {
+          grad.addColorStop(0, '#38bdf8');
+          grad.addColorStop(0.5, '#818cf8');
+          grad.addColorStop(1, '#c084fc');
+        } else {
+          const c1 = s.color || '#38bdf8';
+          const c2 = t.color || '#818cf8';
+          grad.addColorStop(0, `${c1}99`);
+          grad.addColorStop(1, `${c2}99`);
+        }
+
+        // Outer neon glow halo for highlighted connections
+        if (isHighlight) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(t.x, t.y);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+          ctx.lineWidth = 6;
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 16;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Main edge beam (thicker, high-contrast, luminous)
         ctx.beginPath();
-        ctx.moveTo(edge.sourceNode.x, edge.sourceNode.y);
-        ctx.lineTo(edge.targetNode.x, edge.targetNode.y);
-        ctx.strokeStyle = isHighlight ? 'rgba(56, 189, 248, 0.7)' : 'rgba(36, 36, 44, 0.8)';
-        ctx.lineWidth = isHighlight ? 1.8 : 1;
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = isHighlight ? 3.0 : 2.2;
         ctx.stroke();
 
-        // Edge particle animation
-        const px = edge.sourceNode.x + (edge.targetNode.x - edge.sourceNode.x) * ((particleOffset + (edge.sourceNode.x * 0.01)) % 1);
-        const py = edge.sourceNode.y + (edge.targetNode.y - edge.sourceNode.y) * ((particleOffset + (edge.sourceNode.x * 0.01)) % 1);
-        ctx.beginPath();
-        ctx.arc(px, py, 1.2, 0, 2 * Math.PI);
-        ctx.fillStyle = isHighlight ? '#38bdf8' : 'rgba(113, 113, 122, 0.4)';
-        ctx.fill();
+        // Edge photon pulse animation
+        const t1 = ((particleOffset + (s.x * 0.007)) % 1);
+        const t2 = ((particleOffset + 0.5 + (s.y * 0.007)) % 1);
+        const pulseTimes = isHighlight ? [t1, t2] : [t1];
+        
+        for (const pt of pulseTimes) {
+          const px = s.x + (t.x - s.x) * pt;
+          const py = s.y + (t.y - s.y) * pt;
+          
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(px, py, isHighlight ? 3.2 : 2.2, 0, 2 * Math.PI);
+          ctx.fillStyle = isHighlight ? '#ffffff' : '#38bdf8';
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = isHighlight ? 12 : 8;
+          ctx.fill();
+          ctx.restore();
+        }
       }
 
       // Render nodes
