@@ -18,25 +18,27 @@ Activate this workflow when:
 
 ---
 
-## Execution Workflow
+## Execution Workflow (MANDATORY FOR AGENT)
+
+Whenever the user prompts with `/tenet <prompt>`, the assistant **MUST IMMEDIATELY execute Step 1 & 2 via `run_command`** before writing any code:
 
 ### 1. Initialize Graph (if not already done)
-If the project has not yet been indexed with Tenet:
 ```bash
 tenet init .
 ```
 
-### 2. Query the Pipeline
-Before dumping raw files or large context into your prompt, run the user's request through Tenet:
+### 2. Query the Reduction Pipeline (ALWAYS REQUIRED)
+Run the user's prompt through Tenet to log the ledger entry, check semantic cache, and extract the AST scope:
 ```bash
-tenet query "<user_prompt>" --files <comma_separated_touched_files>
+tenet query "<user_prompt>"
 ```
+*(If specific files are known or mentioned by the user, append `-f "path/to/file"`)*
 
-Alternatively, if the Tenet dashboard daemon is running, you can query the REST API directly:
+Alternatively, if the Tenet dashboard daemon is running, post to the REST API:
 ```bash
 curl -s -X POST http://127.0.0.1:8420/api/pipeline/simulate \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "<user_prompt>", "touched_files": ["path/to/file.py"]}'
+  -d '{"prompt": "<user_prompt>"}'
 ```
 
 ---
