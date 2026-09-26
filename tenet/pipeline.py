@@ -265,27 +265,23 @@ def process_request(
             )
 
     # ── Stage 6: Log escalation, return payload ───────────────────────────
-    logger.info("pipeline: escalating (tier=%s, ~%d tokens)", tier, estimated_tokens)
+    actual_tokens = context.estimated_tokens
+    logger.info("pipeline: escalating (tier=%s, ~%d compressed tokens vs %d naive)", tier, actual_tokens, estimated_naive)
     ledger_id = ledger.log_request(
         prompt_summary=prompt[:200],
         stage_reached="escalated",
         scope_node_count=node_count,
         estimated_tokens_naive=estimated_naive,
-        estimated_tokens_actual=estimated_tokens,
+        estimated_tokens_actual=actual_tokens,
         module_attribution=_module_from_files(touched_files),
     )
-
-    # Register callback for when the actual backend reports usage
-    if actual_tokens_callback and ledger_id:
-        # The caller invokes this after the backend responds
-        pass  # ledger_id is in the result for the caller to use
 
     return PipelineResult(
         stage_reached="escalated",
         response=None,
         compressed_payload=context,
         tier=tier,
-        estimated_tokens=estimated_tokens,
+        estimated_tokens=actual_tokens,
         scope_node_count=node_count,
         scope_edge_count=edge_count,
         requires_confirmation=needs_confirm,
