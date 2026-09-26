@@ -1,12 +1,41 @@
+# Local data & databases
 data/
+*.sqlite
+*.sqlite3
+*.db
+team_snapshot.sqlite
+
+# Secrets & Environment variables
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# Python artifacts & virtual environments
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 .pytest_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
+ENV/
+env/
 dist/
 build/
 *.egg-info/
+*.egg
+
+# Logs & temp files
+*.log
+*.tmp
 .DS_Store
-*.sqlite
+.directory
+Thumbs.db
+

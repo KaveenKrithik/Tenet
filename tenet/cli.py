@@ -147,9 +147,11 @@ def cmd_query(
 @app.command("optimize")
 def cmd_optimize(
     prompt: str = typer.Argument(..., help='Rough coding prompt to optimize'),
-    copy: bool = typer.Option(True, "--copy/--no-copy", help="Copy the result to clipboard (Mac only)"),
+    copy: bool = typer.Option(True, "--copy/--no-copy", help="Copy the result to clipboard"),
 ) -> None:
     """Optimize a prompt and optionally copy it to your clipboard."""
+    import platform
+    import shutil
     import subprocess
     from tenet.config import load_config
     from tenet.triage.prompt_optimizer import optimize_prompt
@@ -162,11 +164,35 @@ def cmd_optimize(
     console.print(f"\n[bold green]Optimized Prompt:[/]\n{optimized}\n")
 
     if copy:
+        copied = False
+        sys_name = platform.system()
         try:
-            # Works natively on macOS
-            process = subprocess.Popen("pbcopy", env={"LANG": "en_US.UTF-8"}, stdin=subprocess.PIPE)
-            process.communicate(optimized.encode("utf-8"))
-            console.print("[dim]✓ Copied to clipboard![/]")
+            if sys_name == "Darwin" and shutil.which("pbcopy"):
+                proc = subprocess.Popen(["pbcopy"], env={"LANG": "en_US.UTF-8"}, stdin=subprocess.PIPE)
+                proc.communicate(optimized.encode("utf-8"))
+                copied = proc.returncode == 0
+            elif sys_name == "Windows" and shutil.which("clip"):
+                proc = subprocess.Popen(["clip"], stdin=subprocess.PIPE)
+                proc.communicate(optimized.encode("utf-8"))
+                copied = proc.returncode == 0
+            elif sys_name == "Linux":
+                if shutil.which("wl-copy"):
+                    proc = subprocess.Popen(["wl-copy"], stdin=subprocess.PIPE)
+                    proc.communicate(optimized.encode("utf-8"))
+                    copied = proc.returncode == 0
+                elif shutil.which("xclip"):
+                    proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
+                    proc.communicate(optimized.encode("utf-8"))
+                    copied = proc.returncode == 0
+                elif shutil.which("xsel"):
+                    proc = subprocess.Popen(["xsel", "-b", "-i"], stdin=subprocess.PIPE)
+                    proc.communicate(optimized.encode("utf-8"))
+                    copied = proc.returncode == 0
+
+            if copied:
+                console.print("[dim]✓ Copied to clipboard![/]")
+            else:
+                console.print("[dim](Clipboard tool not found or failed; text printed above)[/]")
         except Exception as exc:
             console.print(f"[yellow]Could not copy to clipboard: {exc}[/]")
 
