@@ -27,7 +27,12 @@ def optimize_prompt(prompt: str, config) -> str:
             prompt=f"{system_instruction}{prompt}",
         )
         
-        optimized = response.get("response", "").strip() if isinstance(response, dict) else str(response).strip()
+        if hasattr(response, "response"):
+            optimized = (response.response or "").strip()
+        elif isinstance(response, dict):
+            optimized = response.get("response", "").strip()
+        else:
+            optimized = str(response).strip()
         
         if optimized:
             return optimized

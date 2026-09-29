@@ -3,15 +3,24 @@ dashboard/api.py — FastAPI routes for the Tenet dashboard.
 
 Serves ledger analytics (totals, spend by module, anomalies) and the
 static single-page dashboard at GET /.
+
+Upgrade 5 — Real-Time Token Savings HUD:
+  GET /api/hud/snapshot — one-shot badge payload (JSON).
+  GET /api/hud/stream   — Server-Sent Events stream that pushes HUD
+                           updates every 5 seconds so IDE status bars
+                           can display live badges:
+                           [TENET: 61.2% Saved | $5.25 Preserved | 778k Left]
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -61,12 +70,19 @@ def _get_graph() -> GraphStore:
 # Analytics API routes
 # ---------------------------------------------------------------------------
 
+from tenet.ide_detector import detect_ide_and_plan
+
 @app.get("/api/totals", tags=["analytics"])
 async def get_totals() -> dict[str, Any]:
-    """Return aggregate token savings, cache hit rate, request counts, and account/IDE budget info."""
+    """Return aggregate token savings, cache hit rate, request counts, and detected IDE/plan budget info."""
     ledger = _get_ledger()
     totals = ledger.get_totals()
     cfg = load_config()
+
+    detection = detect_ide_and_plan({
+        "ide_provider": cfg.account.ide_provider,
+        "account_plan": cfg.account.account_plan,
+    })
 
     allowance = cfg.account.total_token_allowance or cfg.router.monthly_token_budget
     tokens_remaining = max(0, allowance - totals.tokens_actual_total) if allowance > 0 else None
@@ -84,12 +100,43 @@ async def get_totals() -> dict[str, Any]:
         "tokens_remaining": tokens_remaining,
         "account": {
             "user_name": cfg.account.user_name,
-            "ide_provider": cfg.account.ide_provider,
-            "account_plan": cfg.account.account_plan,
+            "ide_provider": detection.ide_name,
+            "account_plan": detection.plan_name,
+            "plan_subtext": detection.plan_subtext,
             "total_allowance": allowance,
             "period_label": cfg.account.period_label,
         },
     }
+
+
+@app.get("/api/models-usage", tags=["analytics"])
+async def get_models_usage() -> dict[str, Any]:
+    """Return model quota and rate limit status matching IDE Models & Usage interface."""
+    cfg = load_config()
+    detection = detect_ide_and_plan({
+        "ide_provider": cfg.account.ide_provider,
+        "account_plan": cfg.account.account_plan,
+    })
+    return {
+        "ide_name": detection.ide_name,
+        "plan_name": detection.plan_name,
+        "plan_subtext": detection.plan_subtext,
+        "gemini_models": {
+            "name": detection.gemini_quota.name,
+            "remaining_pct": detection.gemini_quota.remaining_pct,
+            "description": detection.gemini_quota.description,
+            "refresh_text": detection.gemini_quota.refresh_text,
+            "status": detection.gemini_quota.status,
+        },
+        "claude_gpt_models": {
+            "name": detection.claude_gpt_quota.name,
+            "remaining_pct": detection.claude_gpt_quota.remaining_pct,
+            "description": detection.claude_gpt_quota.description,
+            "refresh_text": detection.claude_gpt_quota.refresh_text,
+            "status": detection.claude_gpt_quota.status,
+        }
+    }
+
 
 
 
@@ -259,6 +306,105 @@ async def get_multi_agent_matrix() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Upgrade 5 — Real-Time Token Savings HUD
+# ---------------------------------------------------------------------------
+
+def _build_hud_payload() -> dict[str, Any]:
+    """Compute the current HUD badge payload.
+
+    Returns a JSON-serialisable dict with:
+    - ``badge``          — compact display string for IDE status bars
+    - ``saved_pct``      — float percentage of tokens saved
+    - ``dollars_saved``  — estimated cost preserved in USD
+    - ``tokens_left``    — remaining allowance
+    - ``total_requests`` — total pipeline runs
+    - ``cache_hit_rate`` — float 0–1
+    """
+    cfg = load_config()
+    try:
+        ledger = _get_ledger()
+        totals = ledger.get_totals()
+    except Exception:
+        totals = None
+
+    if totals:
+        naive = totals.tokens_naive_total or 1
+        saved_pct = (totals.tokens_saved / naive * 100) if naive > 0 else 0.0
+        dollars = (totals.tokens_saved / 1000) * 0.015
+        allowance = cfg.account.total_token_allowance or cfg.router.monthly_token_budget
+        tokens_left = max(0, allowance - totals.tokens_actual_total) if allowance > 0 else 0
+        cache_hit_rate = round(totals.cache_hit_rate, 4)
+        total_requests = totals.total_requests
+    else:
+        saved_pct = 0.0
+        dollars = 0.0
+        allowance = cfg.account.total_token_allowance or cfg.router.monthly_token_budget
+        tokens_left = allowance
+        cache_hit_rate = 0.0
+        total_requests = 0
+
+    badge = (
+        f"[TENET: {saved_pct:.1f}% Saved │ "
+        f"${dollars:.2f} Preserved │ "
+        f"{tokens_left:,} Left]"
+    )
+
+    return {
+        "badge": badge,
+        "saved_pct": round(saved_pct, 2),
+        "dollars_saved": round(dollars, 4),
+        "tokens_left": tokens_left,
+        "total_requests": total_requests,
+        "cache_hit_rate": cache_hit_rate,
+    }
+
+
+@app.get("/api/hud/snapshot", tags=["hud"])
+async def get_hud_snapshot() -> dict[str, Any]:
+    """Return a one-shot HUD badge payload (JSON).
+
+    Suitable for polling-based IDE integrations or MCP tool calls.
+    """
+    return _build_hud_payload()
+
+
+@app.get("/api/hud/stream", tags=["hud"])
+async def hud_stream(interval: float = 5.0):
+    """Server-Sent Events stream pushing live HUD badge updates.
+
+    Connect with EventSource or curl:
+
+        curl http://127.0.0.1:8420/api/hud/stream
+
+    Each event contains a JSON payload identical to ``/api/hud/snapshot``.
+    The stream runs indefinitely; ``interval`` controls push frequency in
+    seconds (default: 5, min: 1, max: 60).
+    """
+    push_interval = max(1.0, min(60.0, float(interval)))
+
+    async def event_generator():
+        while True:
+            try:
+                payload = _build_hud_payload()
+                data = json.dumps(payload)
+                yield f"data: {data}\n\n"
+            except Exception as exc:
+                err_payload = json.dumps({"error": str(exc)})
+                yield f"data: {err_payload}\n\n"
+            await asyncio.sleep(push_interval)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Static file serving
 # ---------------------------------------------------------------------------
 
@@ -274,4 +420,3 @@ async def serve_index():
 # Mount static assets
 if _STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
-

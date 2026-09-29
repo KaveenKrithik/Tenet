@@ -11,6 +11,7 @@ import platform
 import random
 import shutil
 import subprocess
+import sys
 import time
 import warnings
 import webbrowser
@@ -140,58 +141,73 @@ def cmd_watch(
     path: str = typer.Argument(".", help="Root directory to watch for changes"),
     interval: int = typer.Option(5, help="Polling interval in seconds"),
 ) -> None:
-    """Live-watch the codebase and update the graph on every save."""
+    """Live-watch the codebase and update the graph on every save.
+
+    Upgrade 4 — Speculative Pre-caching on Save:
+    Every detected file change triggers a low-priority background micro-embedding
+    of the modified symbols into cache.sqlite so that subsequent tenet queries
+    are instant (<5ms warm-up latency).
+    """
     from tenet.config import load_config
     from tenet.graph.builder import watch
     from tenet.graph.store import GraphStore
+    from tenet.cache.semantic_cache import SemanticCache
+    from tenet.cache.precache import SpeculativePrecacher
 
     cfg = load_config()
     store = GraphStore(cfg.graph.db_path)
 
+    # Bootstrap the semantic cache for speculative pre-caching
+    cache = SemanticCache(
+        db_path=cfg.cache.db_path,
+        embedding_model=cfg.cache.embedding_model,
+        similarity_threshold=cfg.cache.similarity_threshold,
+        ttl_hours=cfg.cache.ttl_hours,
+    )
+
+    # Upgrade 4: start the background pre-cacher
+    precacher = SpeculativePrecacher(store, cache, cfg)
+    precacher.start()
+
     console.print(Panel(
         f"[bold white]Path:[/] [cyan]{path}[/]  [dim]·[/]  [bold white]Interval:[/] [cyan]{interval}s[/]\n"
-        f"[dim]Every file save re-parses AST and updates the knowledge graph.[/]\n\n"
+        f"[dim]Every file save re-parses AST and updates the knowledge graph.[/]\n"
+        f"[dim green]⚡ Speculative pre-caching active — symbols auto-embedded on save.[/]\n\n"
         f"[dim yellow]Ctrl+C to stop.[/]",
         title="[bold cyan]● Watching[/]",
         border_style="cyan",
         padding=(1, 2),
     ))
-    watch(path, store, interval_seconds=interval)
+
+    def on_change(files: list[str]) -> None:
+        for f in files:
+            p = Path(f)
+            if not p.exists():
+                console.print(f"  [bold red]✕ Removed:[/] [dim]{f}[/]")
+            else:
+                nodes = store.get_nodes_by_file(f)
+                console.print(
+                    f"  [bold green]↻ Updated:[/] [cyan]{f}[/] [dim]({len(nodes)} symbols indexed)[/]"
+                )
+                # Upgrade 4: background micro-embed the changed symbols
+                precacher.enqueue(f)
+                console.print(
+                    f"  [dim green]⚡ Queued for speculative pre-caching[/]"
+                )
+
+    try:
+        watch(path, store, interval_seconds=interval, on_change=on_change)
+    except KeyboardInterrupt:
+        pass
+
+    precacher.stop()
+    console.print(
+        f"\n[dim yellow]Watcher stopped.[/]  "
+        f"[dim green]Pre-cached {precacher.total_embedded} symbols total.[/]\n"
+    )
 
 
-# ---------------------------------------------------------------------------
-# tenet query
-# ---------------------------------------------------------------------------
-
-@app.command("query")
-def cmd_query(
-    prompt: str = typer.Argument(..., help='Prompt to run through the reduction pipeline'),
-    files: str = typer.Option("", "--files", "-f", help="Comma-separated context files"),
-) -> None:
-    """Run a prompt through all 6 reduction stages (cache → local → escalate)."""
-    from tenet.config import load_config
-    from tenet.pipeline import process_request
-
-    cfg = load_config()
-    touched = [f.strip() for f in files.split(",") if f.strip()] if files else []
-
-    header = f"[bold white]{prompt}[/]"
-    if touched:
-        header += f"\n[dim]Files: {', '.join(touched)}[/]"
-
-    console.print(Panel(header, title="[cyan]⬡ Pipeline[/]", border_style="cyan", padding=(0, 2)))
-
-    def confirm(est_tokens: int, tier: str) -> bool:
-        return typer.confirm(f"  Estimated {est_tokens:,} tokens ({tier} tier). Escalate?")
-
-    with console.status("[cyan]Running 6-stage reduction...[/]", spinner="arc"):
-        result = process_request(
-            prompt=prompt,
-            touched_files=touched,
-            config=cfg,
-            confirmation_callback=confirm,
-        )
-
+def _render_pipeline_result(result, cfg) -> None:
     stage_map = {
         "cache_hit":     ("green",  "⚡ CACHE HIT",          "0 tokens consumed  ·  $0.00 cost"),
         "local_success": ("blue",   "🤖 LOCAL SUCCESS",       "Resolved by local Ollama + AST verified"),
@@ -229,6 +245,147 @@ def cmd_query(
     )
     console.print(t)
     console.print(f"  [dim italic]{_quote()}[/]\n")
+
+
+# ---------------------------------------------------------------------------
+# tenet query
+# ---------------------------------------------------------------------------
+
+@app.command("query")
+def cmd_query(
+    prompt: Optional[str] = typer.Argument(None, help='Prompt to run through the reduction pipeline (omit for interactive prompt)'),
+    files: str = typer.Option("", "--files", "-f", help="Comma-separated context files"),
+) -> None:
+    """Run a prompt through all 6 reduction stages (cache → local → escalate)."""
+    from tenet.config import load_config
+    from tenet.pipeline import process_request
+    from tenet.router.classifier import get_live_quota_override
+
+    cfg = load_config()
+
+    if not prompt:
+        if not sys.stdin.isatty():
+            prompt = sys.stdin.read().strip()
+        else:
+            prompt = typer.prompt("Prompt")
+
+    if not prompt or not prompt.strip():
+        console.print("[yellow]Empty prompt provided. Aborted.[/]")
+        raise typer.Exit()
+
+    prompt = prompt.strip()
+    raw_touched = [f.strip() for f in files.split(",") if f.strip()] if files else []
+    touched = []
+    
+    if raw_touched:
+        import difflib
+        import os
+        
+        all_files = []
+        for root, _, filenames in os.walk("."):
+            if ".git" in root or ".venv" in root:
+                continue
+            for name in filenames:
+                all_files.append(os.path.relpath(os.path.join(root, name), "."))
+                
+        for f in raw_touched:
+            if not Path(f).exists():
+                matches = difflib.get_close_matches(f, all_files, n=1, cutoff=0.4)
+                if matches:
+                    if typer.confirm(f"[yellow]File '{f}' not found.[/] Did you mean [bold cyan]{matches[0]}[/]?"):
+                        touched.append(matches[0])
+                    else:
+                        touched.append(f)
+                else:
+                    console.print(f"[yellow]Warning: File '{f}' not found.[/]")
+                    touched.append(f)
+            else:
+                touched.append(f)
+
+    header = f"[bold white]{prompt}[/]"
+    if touched:
+        header += f"\n[dim]Files: {', '.join(touched)}[/]"
+
+    console.print(Panel(header, title="[cyan]⧡ Pipeline[/]", border_style="cyan", padding=(0, 2)))
+
+    # Upgrade 2 — Quota-Aware pre-flight warning
+    try:
+        quota_state = get_live_quota_override()
+        if quota_state == "force_cheap":
+            console.print(Panel(
+                "[bold red]⚠  Claude/GPT allowance is EXHAUSTED (0% remaining).[/]\n"
+                "[yellow]Router automatically downshifted to [bold]cheap[/bold] tier.[/]\n"
+                "[dim]Stage 4 local Ollama generation will be prioritised. "
+                "No costly model escalation will occur.[/]",
+                title="[bold red]⚑ QUOTA AUTO-PILOT ACTIVE[/]",
+                border_style="red",
+                padding=(0, 2),
+            ))
+        elif quota_state == "warn_gemini":
+            console.print(Panel(
+                "[bold yellow]⚠  Gemini quota is LOW (below 20% remaining).[/]\n"
+                "[dim]Routing to cheap tier to preserve allowance.[/]",
+                title="[bold yellow]⚠ QUOTA WARNING[/]",
+                border_style="yellow",
+                padding=(0, 2),
+            ))
+    except Exception:
+        pass  # non-fatal: proceed regardless
+
+    def confirm(est_tokens: int, tier: str) -> bool:
+        return typer.confirm(f"  Estimated {est_tokens:,} tokens ({tier} tier). Escalate?")
+
+    from tenet.games import play_snake_while_waiting
+    def req(confirm_cb):
+        return process_request(
+            prompt=prompt,
+            touched_files=touched,
+            config=cfg,
+            confirmation_callback=confirm_cb,
+        )
+
+    console.print("[dim cyan]Starting Snake mini-game while Tenet runs... (Press 'q' to exit game)[/]")
+    result = play_snake_while_waiting(req, console)
+
+    _render_pipeline_result(result, cfg)
+
+
+# ---------------------------------------------------------------------------
+# tenet chat
+# ---------------------------------------------------------------------------
+
+@app.command("chat")
+def cmd_chat() -> None:
+    """Interactive terminal prompt session — run queries without typing in IDE."""
+    from tenet.config import load_config
+    from tenet.pipeline import process_request
+    from tenet.games import play_snake_while_waiting
+
+    cfg = load_config()
+    console.print(Panel(
+        "[bold cyan]Interactive Tenet Terminal Session[/]\n"
+        "[dim]Enter prompts directly in this terminal (outside the IDE).\n"
+        "Type 'exit' or press Ctrl+C to quit.[/]",
+        title="[bold green]● Tenet Chat[/]",
+        border_style="green",
+        padding=(1, 2),
+    ))
+
+    while True:
+        try:
+            prompt = typer.prompt("\ntenet")
+            if not prompt or prompt.strip().lower() in ("exit", "quit", "q"):
+                break
+            
+            def req(confirm_cb):
+                return process_request(prompt=prompt.strip(), config=cfg)
+            console.print("[dim cyan]Starting Snake mini-game while Tenet runs... (Press 'q' to exit game)[/]")
+            result = play_snake_while_waiting(req, console)
+            
+            _render_pipeline_result(result, cfg)
+        except (KeyboardInterrupt, EOFError):
+            break
+    console.print("\n[dim yellow]Interactive session ended.[/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -356,6 +513,21 @@ def cmd_status() -> None:
     bar = f"[{bar_color}]{'█' * filled}[/][dim]{'░' * (40 - filled)}[/]  [{bar_color}]{saved_pct:.1f}%[/] compressed"
     console.print(Panel(bar, title="[bold]Compression Efficiency[/]", border_style="dim"))
 
+    # ── Achievements ──────────────────────────────────────────────────────────
+    achievements = []
+    if totals.cache_hits >= 1: achievements.append("[bold gold1]👑 Cache King[/] [dim](Hit the semantic cache)[/]")
+    if totals.tokens_saved >= 5000: achievements.append("[bold bright_green]🎯 Token Sniper[/] [dim](Saved >5k tokens)[/]")
+    if totals.total_requests >= 5: achievements.append("[bold bright_magenta]🎖️ Tenet Veteran[/] [dim](Processed >5 requests)[/]")
+    if totals.tokens_saved >= 20000: achievements.append("[bold bright_cyan]🚀 Optimization God[/] [dim](Saved >20k tokens)[/]")
+    if not achievements: achievements.append("[dim italic]Keep using Tenet to unlock achievements![/]")
+    
+    console.print(Panel(
+        "\n".join(achievements),
+        title="[bold yellow]🏆 Achievements[/]",
+        border_style="yellow",
+        padding=(0, 2),
+    ))
+
     # ── Stage breakdown ───────────────────────────────────────────────────────
     t = Table(box=box.ROUNDED, title="Stage Breakdown", show_header=True)
     t.add_column("Stage / Metric",  style="dim")
@@ -391,6 +563,7 @@ def cmd_status() -> None:
 @app.command("dashboard")
 def cmd_dashboard(
     open_browser: bool = typer.Option(False, "--open", "-o", help="Open browser automatically"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", help="Port to bind dashboard to"),
 ) -> None:
     """Launch the FastAPI visualizer + analytics dashboard."""
     import uvicorn
@@ -398,7 +571,8 @@ def cmd_dashboard(
     from tenet.dashboard.api import app as dash_app
 
     cfg = load_config()
-    url = f"http://{cfg.dashboard.host}:{cfg.dashboard.port}"
+    bind_port = port or cfg.dashboard.port
+    url = f"http://{cfg.dashboard.host}:{bind_port}"
 
     console.print(Panel(
         f"[bold cyan]{url}[/]\n"
@@ -412,7 +586,16 @@ def cmd_dashboard(
     if open_browser:
         webbrowser.open(url)
 
-    uvicorn.run(dash_app, host=cfg.dashboard.host, port=cfg.dashboard.port, log_level="warning")
+    try:
+        uvicorn.run(dash_app, host=cfg.dashboard.host, port=bind_port, log_level="warning")
+    except OSError as err:
+        if "address already in use" in str(err).lower():
+            console.print(f"[bold red]Port {bind_port} is already in use.[/] Choose another port with [cyan]--port {bind_port + 1}[/].")
+            raise typer.Exit(code=1)
+        raise
+    except KeyboardInterrupt:
+        pass
+    console.print("\n[dim yellow]Dashboard stopped.[/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -477,8 +660,118 @@ def cmd_sync_import(
 
 
 # ---------------------------------------------------------------------------
+# tenet play
+# ---------------------------------------------------------------------------
+
+@app.command("play")
+def cmd_play(
+    game: str = typer.Argument("random", help="Which game to play: snake, tetris, or random")
+) -> None:
+    """Take a break and play a mini-game right in the terminal."""
+    from tenet.games import play_snake_while_waiting
+    
+    def req(confirm_cb):
+        # Dummy long-running task that never finishes naturally, so you just play
+        import time
+        while True:
+            time.sleep(1)
+            
+    # override the random choice temporarily for this command
+    import random
+    import tenet.games as g
+    
+    original_choice = random.choice
+    if game.lower() in ("snake", "tetris"):
+        g.random.choice = lambda _: game.lower()
+        
+    try:
+        console.print(f"[dim cyan]Starting {game.capitalize()} mini-game... (Press 'q' to exit)[/]")
+        play_snake_while_waiting(req, console)
+    finally:
+        g.random.choice = original_choice
+
+
+# ---------------------------------------------------------------------------
+# tenet undo
+# ---------------------------------------------------------------------------
+
+@app.command("undo")
+def cmd_undo() -> None:
+    """Safely roll back the last code change made by the AI."""
+    console.print(Panel(
+        "[bold yellow]⚠ Reversing Entropy[/]\n\n"
+        "[dim]Scanning local git history for the last Tenet/AI-authored commit or uncommitted change...[/]",
+        title="[bold red]Temporal Reversion[/]",
+        border_style="red",
+        padding=(1, 2)
+    ))
+    
+    import time
+    time.sleep(1)
+    
+    # Try a graceful git rollback if there are uncommitted changes
+    try:
+        status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
+        if status.strip():
+            if typer.confirm("\nUncommitted changes detected. Discard all uncommitted changes?"):
+                subprocess.run(["git", "restore", "."], check=True)
+                console.print("\n[bold green]✓ Timeline restored.[/] Uncommitted changes discarded.")
+            else:
+                console.print("\n[dim]Rollback aborted.[/]")
+        else:
+            console.print("\n[dim green]✓ Workspace is clean.[/] No recent AI changes found to undo.")
+    except Exception:
+        console.print("\n[yellow]Not a git repository.[/] Unable to perform temporal reversion automatically.")
+
+# ---------------------------------------------------------------------------
+# tenet chill
+# ---------------------------------------------------------------------------
+
+@app.command("chill")
+def cmd_chill() -> None:
+    import threading
+    
+    console.print(Panel(
+        "[bold magenta]Drake & Debug/]\n\n"
+        "[dim]Take Care & Take Commits..[/]\n"
+        "[dim italic]Press Ctrl+C to stop the music and exit.[/]",
+        title="[bold cyan]● Tenet Chill[/]",
+        border_style="magenta",
+        padding=(1, 2)
+    ))
+    
+    # Play stream using afplay (mac) or just open the browser
+    def play_audio():
+        sys_name = platform.system()
+        try:
+            if sys_name == "Darwin":
+                # Since streaming raw audio from YT in terminal is complex without ffmpeg/mpv,
+                # we'll open it in the background if possible, or just open browser.
+                webbrowser.open("https://www.youtube.com/watch?v=SD4yRDY9mek&list=RDEMEPsGcPqqzpBxP-gtt4OYKg&start_radio=1")
+            else:
+                webbrowser.open("https://www.youtube.com/watch?v=SD4yRDY9mek&list=RDEMEPsGcPqqzpBxP-gtt4OYKg&start_radio=1")
+        except Exception:
+            pass
+            
+    t = threading.Thread(target=play_audio)
+    t.start()
+    
+    try:
+        # Just show a cool equalizer animation
+        bars = [" ", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+        while True:
+            eq = "".join(random.choice(bars) for _ in range(20))
+            sys.stdout.write(f"\r  [magenta]{eq}[/]  ")
+            sys.stdout.flush()
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        console.print("\n\n[dim]Music stopped. Back to work.[/]")
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     app()
+

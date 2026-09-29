@@ -45,7 +45,7 @@ class PipelineResult:
 
 def process_request(
     prompt: str,
-    touched_files: list[str],
+    touched_files: Optional[list[str]] = None,
     config=None,
     graph_store=None,
     cache=None,
@@ -83,6 +83,12 @@ def process_request(
     from tenet.graph.builder import update_graph
     from tenet.graph.query import find_nodes_for_files, get_scope_size, get_subgraph
     from tenet.graph.store import GraphStore
+    from tenet.graph.git_diff import (
+        get_git_touched_files,
+        get_git_touched_symbols,
+        compute_node_weights,
+        get_git_boosted_center_node,
+    )
     from tenet.diffing.ast_diff import ContextPayload, compress_context
     from tenet.cache.semantic_cache import SemanticCache
     from tenet.router.classifier import classify_tier
@@ -90,6 +96,7 @@ def process_request(
     from tenet.ledger.store import LedgerStore
 
     # ── Bootstrap dependencies ────────────────────────────────────────────
+    touched_files = touched_files or []
     if config is None:
         config = load_config()
 
@@ -123,13 +130,41 @@ def process_request(
         except Exception as exc:
             logger.warning("pipeline: graph update failed (non-fatal): %s", exc)
 
-    # Resolve scope: find center node from touched files
-    scope_nodes = find_nodes_for_files(touched_files, graph_store)
+    # ── Upgrade 3: Git-Diff Context Pinning ──────────────────────────────
+    # Discover git-touched files/symbols and merge with caller-provided list
+    try:
+        git_files = get_git_touched_files()
+        git_symbols = get_git_touched_symbols()
+    except Exception as exc:
+        logger.debug("pipeline: git diff query failed (non-fatal): %s", exc)
+        git_files, git_symbols = [], []
+
+    # Merge all touched files (explicit + git)
+    all_touched = list(set(touched_files) | set(git_files))
+
+    # Resolve scope: find center node from merged touched files
+    scope_nodes = find_nodes_for_files(all_touched, graph_store)
+    if not scope_nodes:
+        scope_nodes = find_nodes_for_files(touched_files, graph_store)
     if not scope_nodes:
         # Fall back to any node in the graph as a heuristic
         scope_nodes = graph_store.get_all_nodes()[:5]
 
-    center_id = scope_nodes[0]["id"] if scope_nodes else ""
+    # Compute git-boosted centrality weights and pick the best BFS center
+    all_nodes = graph_store.get_all_nodes()
+    node_weights = compute_node_weights(
+        nodes=all_nodes,
+        touched_files=touched_files,
+        touched_symbols=[],
+        git_files=git_files,
+        git_symbols=git_symbols,
+    )
+    default_center = scope_nodes[0]["id"] if scope_nodes else ""
+    center_id = get_git_boosted_center_node(
+        nodes=all_nodes,
+        weights=node_weights,
+        fallback_node_id=default_center,
+    ) or default_center
 
     # ── Stage 1b: Compute scope size ─────────────────────────────────────
     hops = config.graph.max_hops

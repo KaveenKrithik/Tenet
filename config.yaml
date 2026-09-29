@@ -1,9 +1,10 @@
 account:
   user_name: "Kaveen Krithik"
   ide_provider: "Antigravity IDE"
-  account_plan: "Pro Plan"
+  account_plan: "Antigravity Starter Quota"
   total_token_allowance: 1000000
-  period_label: "Account Allowance"
+  period_label: "Starter Quota"
+
 
 graph:
   languages: [python, javascript, typescript]

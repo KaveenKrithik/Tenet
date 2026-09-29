@@ -41,7 +41,7 @@ def check_anomaly(
     is_anomalous = new_request_tokens > threshold
 
     if is_anomalous:
-        logger.warning(
+        logger.info(
             "anomaly: FLAGGED module=%s tokens=%d > %.1f × avg(%.1f)",
             module, new_request_tokens, anomaly_multiplier, avg,
         )

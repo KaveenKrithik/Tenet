@@ -54,7 +54,11 @@ def generate(
 
         client = ollama.Client(host=host)
         response = client.generate(model=model, prompt=full_prompt)
-        return response.get("response", "") if isinstance(response, dict) else str(response)
+        if hasattr(response, "response"):
+            return response.response or ""
+        elif isinstance(response, dict):
+            return response.get("response", "")
+        return str(response)
 
     except ImportError as exc:
         raise OllamaUnavailableError("ollama package not installed") from exc

@@ -56,9 +56,10 @@ class RouterConfig(BaseModel):
 class AccountConfig(BaseModel):
     user_name: str = "Developer"
     ide_provider: str = "Antigravity IDE"  # e.g., Antigravity IDE, Cursor, VS Code, JetBrains
-    account_plan: str = "Pro Plan"        # e.g., Pro Plan, Free Tier, Custom API Pool
+    account_plan: str = "Antigravity Starter Quota"  # e.g., Antigravity Starter Quota, Cursor Pro
     total_token_allowance: int = 1_000_000 # Total token quota allocated to user account/IDE
-    period_label: str = "Account Allowance" # Badge label
+    period_label: str = "Starter Quota" # Badge label
+
 
 
 class LedgerConfig(BaseModel):

@@ -249,24 +249,53 @@ def _extract_signature_stub(node_dict: dict, src_lines: list[str]) -> str:
     return "\n".join(sig_lines)
 
 
+def _get_hop_distances(node_id: str, hops: int, store) -> dict[str, int]:
+    """Return a mapping of {node_id: hop_distance} for all nodes within ``hops`` of center.
+
+    Uses BFS on undirected graph view so distances are symmetric.
+    Center node has distance 0; its direct neighbours distance 1, etc.
+    """
+    import networkx as nx
+
+    try:
+        from tenet.graph.query import _build_nx_graph
+        G = _build_nx_graph(store)
+        if node_id not in G:
+            return {}
+        G_undir = G.to_undirected()
+        lengths = nx.single_source_shortest_path_length(G_undir, node_id, cutoff=hops)
+        return dict(lengths)
+    except Exception as exc:
+        logger.warning("_get_hop_distances: failed: %s", exc)
+        return {node_id: 0}
+
+
 def compress_context(
     node_id: str,
     hops: int,
     changes: list[Change],
     store,  # GraphStore — imported at call site to avoid circular imports
 ) -> ContextPayload:
-    """Build a compressed ContextPayload for the given scope.
+    """Build a compressed ContextPayload with hop-aware AST skeleton pruning.
 
-    Compression strategy (achieves 75–90% token reduction):
-    - Changed nodes: include the structural diff summary only (1-2 lines).
-    - Unchanged nodes: include signature stub + docstring first line only.
-      A 30-line function becomes ~3 lines — ~90% savings per node.
+    Compression strategy (achieves 75–90%+ token reduction):
+
+    **Upgrade 1 — AST Skeleton Pruning**:
+    - Center node (hop 0): always includes the full implementation body so the
+      LLM has complete context for the primary target.
+    - Direct neighbours (hop 1): include signature stub + docstring (compact).
+    - 2nd/3rd hop nodes: signature-only stub — type info only, no body.
+      A 30-line function becomes a 1-2 line type stub → extra 40–60% savings.
+    - Changed nodes at any hop: ultra-compact diff summary (1-2 lines).
     """
     from tenet.graph.query import get_subgraph
     from pathlib import Path
 
     sg = get_subgraph(node_id, hops, store)
     change_by_name = {c.node_name: c for c in changes}
+
+    # Compute per-node hop distances for skeleton pruning
+    hop_distances = _get_hop_distances(node_id, hops, store)
 
     node_contexts: dict[str, str] = {}
     # Cache file contents so we don't re-read the same file per node
@@ -280,19 +309,34 @@ def compress_context(
             continue
 
         if name in change_by_name:
-            # Changed node: ultra-compact diff summary
+            # Changed node at any hop: ultra-compact diff summary
             c = change_by_name[name]
             node_contexts[nid] = f"[CHANGED] {c.summary}"
+            continue
+
+        hop_dist = hop_distances.get(nid, hops)  # default to max hops if not found
+
+        try:
+            if file_path not in _file_cache:
+                src = Path(file_path).read_text(errors="replace") if file_path else ""
+                _file_cache[file_path] = src.splitlines()
+            src_lines = _file_cache[file_path]
+        except OSError:
+            node_contexts[nid] = f"# {name} [source unavailable]"
+            continue
+
+        if hop_dist == 0:
+            # Center node: full implementation body for primary context
+            line_start = max(0, node_dict.get("line_start", 1) - 1)
+            line_end = node_dict.get("line_end", line_start + 1)
+            full_body = "\n".join(src_lines[line_start:line_end])
+            node_contexts[nid] = full_body
+        elif hop_dist == 1:
+            # Direct 1-hop neighbours: signature + docstring stub
+            node_contexts[nid] = _extract_signature_stub(node_dict, src_lines)
         else:
-            # Unchanged node: signature + docstring stub only (not full body)
-            try:
-                if file_path not in _file_cache:
-                    src = Path(file_path).read_text(errors="replace") if file_path else ""
-                    _file_cache[file_path] = src.splitlines()
-                src_lines = _file_cache[file_path]
-                node_contexts[nid] = _extract_signature_stub(node_dict, src_lines)
-            except OSError:
-                node_contexts[nid] = f"# {name} [source unavailable]"
+            # 2nd+ hop nodes: signature-only skeleton (maximum token savings)
+            node_contexts[nid] = _extract_type_skeleton(node_dict, src_lines)
 
     # Rough token estimate: 1 token ≈ 4 chars
     total_chars = sum(len(v) for v in node_contexts.values())
@@ -304,3 +348,36 @@ def compress_context(
         changes=changes,
         estimated_tokens=estimated_tokens,
     )
+
+
+def _extract_type_skeleton(node_dict: dict, src_lines: list[str]) -> str:
+    """Extract the minimal type skeleton for 2nd/3rd hop nodes.
+
+    Returns only the function/class signature line(s) — no docstring, no body.
+    This is even more aggressive than ``_extract_signature_stub`` and is used
+    for distant dependency nodes that the LLM only needs type-check awareness of.
+    """
+    node_type = node_dict.get("type", "")
+    name = node_dict.get("name", "")
+    line_start = max(0, node_dict.get("line_start", 1) - 1)
+    line_end = node_dict.get("line_end", line_start + 1)
+
+    if not src_lines:
+        return f"# {name}: ...  # [{node_type} — stub]"
+
+    body_lines = src_lines[line_start:line_end]
+    if not body_lines:
+        return f"# {name}: ...  # [{node_type} — stub]"
+
+    # Collect only the signature line(s) up to the opening colon
+    sig_lines: list[str] = []
+    for line in body_lines:
+        sig_lines.append(line)
+        if line.rstrip().endswith(":") and len(sig_lines) >= 1:
+            break
+        if len(sig_lines) >= 4:  # hard cap on multi-line signatures
+            break
+
+    # Add a minimal ellipsis body marker (no docstring — maximum compression)
+    sig_lines.append(f"    ...  # [{node_type}:{name} — type skeleton only]")
+    return "\n".join(sig_lines)

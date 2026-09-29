@@ -111,6 +111,10 @@ class GraphStore:
     def get_all_nodes(self) -> list[dict]:
         return list(self._db.query("SELECT * FROM nodes"))
 
+    def get_nodes_by_file(self, file_path: str) -> list[dict]:
+        """Return all nodes for a specific file."""
+        return list(self._db.query("SELECT * FROM nodes WHERE file_path = ?", [file_path]))
+
     def get_node(self, node_id: str) -> dict | None:
         rows = list(
             self._db.query("SELECT * FROM nodes WHERE id = ?", [node_id])
