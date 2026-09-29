@@ -142,7 +142,7 @@ tenet play
 tenet play snake
 tenet play tetris
 
-# Open Lofi Girl radio in the browser with an animated terminal equalizer
+# Open playlist radio in the browser with an animated terminal equalizer
 tenet chill
 
 # Roll back the last AI-authored change (git restore)
